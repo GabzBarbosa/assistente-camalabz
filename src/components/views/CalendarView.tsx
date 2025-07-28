@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 interface Event {
   id: string;
@@ -15,10 +16,11 @@ interface Event {
 }
 
 const CalendarView = () => {
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month");
   
-  const [events] = useState<Event[]>([
+  const [events, setEvents] = useState<Event[]>([
     {
       id: "1",
       title: "Reunião de planejamento",
@@ -114,6 +116,14 @@ const CalendarView = () => {
   ];
 
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  const handleDeleteEvent = (eventId: string) => {
+    setEvents(prev => prev.filter(event => event.id !== eventId));
+    toast({
+      title: "Evento excluído",
+      description: "O evento foi removido do calendário.",
+    });
+  };
 
   return (
     <div className="p-6">
@@ -218,12 +228,25 @@ const CalendarView = () => {
                         <div
                           key={event.id}
                           className={`
-                            text-xs p-1 rounded border text-center truncate
+                            text-xs p-1 rounded border text-center truncate group relative
                             ${getEventTypeColor(event.type)}
                           `}
                           title={`${event.title} ${event.time ? `- ${event.time}` : ""}`}
                         >
-                          {event.title}
+                          <span className="block truncate">{event.title}</span>
+                          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteEvent(event.id);
+                              }}
+                              className="h-4 w-4 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-2 w-2" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       

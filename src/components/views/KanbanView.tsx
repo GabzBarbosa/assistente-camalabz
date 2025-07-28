@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Plus, Paperclip, Calendar, User } from "lucide-react";
+import { Plus, Paperclip, Calendar, User, Edit2, Trash2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 interface Task {
@@ -58,6 +59,7 @@ const KanbanView = () => {
   ]);
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const columns = [
     { id: "todo", title: "A Fazer", color: "todo" },
@@ -109,6 +111,36 @@ const KanbanView = () => {
     e.preventDefault();
   };
 
+  const handleEditTask = (task: Task) => {
+    setEditingTask({ ...task });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingTask) return;
+    
+    setTasks(tasks.map(task => 
+      task.id === editingTask.id ? editingTask : task
+    ));
+    setEditingTask(null);
+    
+    toast({
+      title: "Tarefa atualizada",
+      description: "As alterações foram salvas com sucesso!",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTask(null);
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    setTasks(tasks.filter(task => task.id !== taskId));
+    toast({
+      title: "Tarefa excluída",
+      description: "A tarefa foi removida com sucesso!",
+    });
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high": return "destructive";
@@ -146,51 +178,133 @@ const KanbanView = () => {
               {tasks
                 .filter(task => task.status === column.id)
                 .map((task) => (
-                  <div
-                    key={task.id}
-                    className="kanban-card"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, task.id)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-sm text-foreground line-clamp-2">
-                        {task.title}
-                      </h4>
-                      <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                        {task.priority}
-                      </Badge>
-                    </div>
-                    
-                    {task.description && (
-                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                        {task.description}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                        {task.assignee && (
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            <span>{task.assignee}</span>
+                  <div key={task.id}>
+                    {editingTask?.id === task.id ? (
+                      // Editing mode
+                      <div className="kanban-card border-primary">
+                        <div className="space-y-3">
+                          <Input
+                            value={editingTask.title}
+                            onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                            className="text-sm"
+                            placeholder="Título da tarefa"
+                          />
+                          
+                          <Textarea
+                            value={editingTask.description}
+                            onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
+                            className="text-xs"
+                            placeholder="Descrição da tarefa"
+                            rows={2}
+                          />
+                          
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={editingTask.priority}
+                              onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value as Task["priority"] })}
+                              className="px-2 py-1 text-xs border border-border rounded bg-background"
+                            >
+                              <option value="low">Baixa</option>
+                              <option value="medium">Média</option>
+                              <option value="high">Alta</option>
+                            </select>
+                            
+                            <Input
+                              type="date"
+                              value={editingTask.dueDate || ""}
+                              onChange={(e) => setEditingTask({ ...editingTask, dueDate: e.target.value })}
+                              className="text-xs flex-1"
+                            />
                           </div>
+                          
+                          <Input
+                            value={editingTask.assignee || ""}
+                            onChange={(e) => setEditingTask({ ...editingTask, assignee: e.target.value })}
+                            className="text-xs"
+                            placeholder="Responsável"
+                          />
+                          
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" onClick={handleSaveEdit} className="flex-1">
+                              <Check className="h-3 w-3 mr-1" />
+                              Salvar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                              <X className="h-3 w-3 mr-1" />
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // View mode
+                      <div
+                        className="kanban-card group"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, task.id)}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-medium text-sm text-foreground line-clamp-2 flex-1">
+                            {task.title}
+                          </h4>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditTask(task)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge variant="outline" className={getPriorityColor(task.priority)}>
+                            {task.priority}
+                          </Badge>
+                        </div>
+                        
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                            {task.description}
+                          </p>
                         )}
                         
-                        {task.attachments && task.attachments > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Paperclip className="h-3 w-3" />
-                            <span>{task.attachments}</span>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-3">
+                            {task.assignee && (
+                              <div className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                <span>{task.assignee}</span>
+                              </div>
+                            )}
+                            
+                            {task.attachments && task.attachments > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Paperclip className="h-3 w-3" />
+                                <span>{task.attachments}</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      
-                      {task.dueDate && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                          
+                          {task.dueDate && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ))}
             </div>

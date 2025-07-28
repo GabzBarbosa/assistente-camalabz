@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Calendar, Clock, Plus, Users, GanttChart } from "lucide-react";
+import { Calendar, Clock, Plus, Users, GanttChart, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 
 interface TimelineTask {
   id: string;
@@ -18,9 +19,10 @@ interface TimelineTask {
 }
 
 const TimelineView = () => {
+  const { toast } = useToast();
   const [selectedView, setSelectedView] = useState<"month" | "quarter" | "year">("month");
   
-  const [tasks] = useState<TimelineTask[]>([
+  const [tasks, setTasks] = useState<TimelineTask[]>([
     {
       id: "task-1",
       name: "Planejamento inicial",
@@ -163,6 +165,14 @@ const TimelineView = () => {
     return day === 0 || day === 6;
   };
 
+  const handleDeleteTask = (taskId: string) => {
+    setTasks(prev => prev.filter(task => task.id !== taskId));
+    toast({
+      title: "Tarefa excluída",
+      description: "A tarefa foi removida da timeline.",
+    });
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -235,19 +245,31 @@ const TimelineView = () => {
                   const position = getTaskPosition(task);
                   
                   return (
-                    <div key={task.id} className="flex items-center border-b border-border/50 pb-2">
+                    <div key={task.id} className="flex items-center border-b border-border/50 pb-2 group">
                       {/* Task Info */}
                       <div className="w-48 flex-shrink-0 pr-4">
                         <div className="flex items-center justify-between mb-1">
                           <h4 className="text-sm font-medium truncate flex-1">
                             {task.name}
                           </h4>
-                          <Badge 
-                            variant="outline" 
-                            className={`ml-2 ${getPriorityColor(task.priority)}`}
-                          >
-                            {task.priority}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge 
+                              variant="outline" 
+                              className={getPriorityColor(task.priority)}
+                            >
+                              {task.priority}
+                            </Badge>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                         
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
