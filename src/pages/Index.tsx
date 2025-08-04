@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { LayoutDashboard, Calendar, Grid3X3, BookOpen, BarChart3, GanttChart } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { LayoutDashboard, Calendar, Grid3X3, BookOpen, BarChart3, GanttChart, LogOut } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
+import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-dashboard.jpg";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KanbanView from "@/components/views/KanbanView";
@@ -10,6 +13,31 @@ import BenchmarkView from "@/components/views/BenchmarkView";
 import TimelineView from "@/components/views/TimelineView";
 const Index = () => {
   const [activeTab, setActiveTab] = useState("kanban");
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [user, loading, navigate]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
   const tabs = [{
     id: "kanban",
     label: "Kanban",
@@ -47,16 +75,30 @@ const Index = () => {
             <p className="text-muted-foreground font-medium">
               Plataforma completa para gestão estratégica de projetos e tarefas
             </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Logado como: {user?.email}
+            </p>
           </div>
-          <div className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="text-center">
-              <div className="font-semibold text-primary">6</div>
-              <div>Visualizações</div>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="text-center">
+                <div className="font-semibold text-primary">6</div>
+                <div>Visualizações</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-primary">∞</div>
+                <div>Projetos</div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="font-semibold text-primary">∞</div>
-              <div>Projetos</div>
-            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleSignOut}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
           </div>
         </div>
       </header>
