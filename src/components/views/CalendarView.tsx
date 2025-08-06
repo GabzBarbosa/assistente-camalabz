@@ -1,52 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
+
 interface Event {
   id: string;
   title: string;
-  date: string;
-  time?: string;
-  type: "task" | "meeting" | "deadline";
-  priority: "low" | "medium" | "high";
+  start_date: string;
+  end_date: string;
+  all_day: boolean;
+  color?: string;
 }
 const CalendarView = () => {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month");
-  const [events, setEvents] = useState<Event[]>([{
-    id: "1",
-    title: "Reunião de planejamento",
-    date: "2024-12-28",
-    time: "09:00",
-    type: "meeting",
-    priority: "high"
-  }, {
-    id: "2",
-    title: "Entrega do MVP",
-    date: "2024-12-30",
-    type: "deadline",
-    priority: "high"
-  }, {
-    id: "3",
-    title: "Revisão de código",
-    date: "2024-12-29",
-    time: "14:00",
-    type: "task",
-    priority: "medium"
-  }, {
-    id: "4",
-    title: "Sprint Review",
-    date: "2025-01-03",
-    time: "15:00",
-    type: "meeting",
-    priority: "medium"
-  }]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchEvents();
+    }
+  }, [user]);
+
+  const fetchEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+      setEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar eventos.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -96,28 +99,41 @@ const CalendarView = () => {
   };
   const getEventsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return events.filter(event => event.date === dateStr);
+    return events.filter(event => {
+      const eventDate = new Date(event.start_date).toISOString().split('T')[0];
+      return eventDate === dateStr;
+    });
   };
-  const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case "meeting":
-        return "bg-primary/10 text-primary border-primary/20";
-      case "deadline":
-        return "bg-destructive/10 text-destructive border-destructive/20";
-      case "task":
-        return "bg-warning/10 text-warning border-warning/20";
-      default:
-        return "bg-secondary text-secondary-foreground";
+  const getEventTypeColor = (color?: string) => {
+    if (color) {
+      return `bg-[${color}]/10 text-[${color}] border-[${color}]/20`;
     }
+    return "bg-primary/10 text-primary border-primary/20";
   };
   const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-  const handleDeleteEvent = (eventId: string) => {
-    setEvents(prev => prev.filter(event => event.id !== eventId));
-    toast({
-      title: "Evento excluído",
-      description: "O evento foi removido do calendário."
-    });
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      setEvents(prev => prev.filter(event => event.id !== eventId));
+      toast({
+        title: "Evento excluído",
+        description: "O evento foi removido do calendário."
+      });
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir evento.",
+        variant: "destructive",
+      });
+    }
   };
   return <div className="p-6">
       <div className="mb-6">
@@ -196,8 +212,8 @@ const CalendarView = () => {
                     <div className="space-y-1">
                       {dayEvents.slice(0, 2).map(event => <div key={event.id} className={`
                             text-xs p-1 rounded border text-center truncate group relative
-                            ${getEventTypeColor(event.type)}
-                          `} title={`${event.title} ${event.time ? `- ${event.time}` : ""}`}>
+                            ${getEventTypeColor(event.color)}
+                          `} title={event.title}>
                           <span className="block truncate">{event.title}</span>
                           <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                             <Button size="sm" variant="ghost" onClick={e => {

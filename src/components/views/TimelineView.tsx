@@ -1,95 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Clock, Plus, Users, GanttChart, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TimelineTask {
   id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  progress: number;
-  assignee: string;
-  dependencies: string[];
-  priority: "low" | "medium" | "high";
-  status: "not-started" | "in-progress" | "completed" | "delayed";
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date?: string;
+  progress?: number;
+  milestone: boolean;
 }
 
 const TimelineView = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedView, setSelectedView] = useState<"month" | "quarter" | "year">("month");
-  
-  const [tasks, setTasks] = useState<TimelineTask[]>([
-    {
-      id: "task-1",
-      name: "Planejamento inicial",
-      startDate: "2024-12-23",
-      endDate: "2024-12-27",
-      progress: 100,
-      assignee: "João Silva",
-      dependencies: [],
-      priority: "high",
-      status: "completed"
-    },
-    {
-      id: "task-2",
-      name: "Design da interface",
-      startDate: "2024-12-28",
-      endDate: "2025-01-05",
-      progress: 60,
-      assignee: "Maria Santos",
-      dependencies: ["task-1"],
-      priority: "high",
-      status: "in-progress"
-    },
-    {
-      id: "task-3",
-      name: "Desenvolvimento backend",
-      startDate: "2025-01-02",
-      endDate: "2025-01-15",
-      progress: 20,
-      assignee: "Pedro Costa",
-      dependencies: ["task-1"],
-      priority: "high",
-      status: "in-progress"
-    },
-    {
-      id: "task-4",
-      name: "Desenvolvimento frontend",
-      startDate: "2025-01-06",
-      endDate: "2025-01-20",
-      progress: 0,
-      assignee: "Ana Oliveira",
-      dependencies: ["task-2"],
-      priority: "medium",
-      status: "not-started"
-    },
-    {
-      id: "task-5",
-      name: "Testes de integração",
-      startDate: "2025-01-16",
-      endDate: "2025-01-25",
-      progress: 0,
-      assignee: "Carlos Lima",
-      dependencies: ["task-3", "task-4"],
-      priority: "high",
-      status: "not-started"
-    },
-    {
-      id: "task-6",
-      name: "Deploy em produção",
-      startDate: "2025-01-26",
-      endDate: "2025-01-30",
-      progress: 0,
-      assignee: "João Silva",
-      dependencies: ["task-5"],
-      priority: "high",
-      status: "not-started"
+  const [tasks, setTasks] = useState<TimelineTask[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchTimelineItems();
     }
-  ]);
+  }, [user]);
+
+  const fetchTimelineItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('timeline_items')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error fetching timeline items:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar itens da timeline.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Gerar datas para o cabeçalho da timeline
   const generateTimelineDates = () => {
@@ -111,8 +72,8 @@ const TimelineView = () => {
   // Calcular posição da tarefa na timeline
   const getTaskPosition = (task: TimelineTask) => {
     const startDate = new Date("2024-12-23");
-    const taskStart = new Date(task.startDate);
-    const taskEnd = new Date(task.endDate);
+    const taskStart = new Date(task.start_date);
+    const taskEnd = task.end_date ? new Date(task.end_date) : new Date(task.start_date);
     
     const totalDays = timelineDates.length;
     const taskStartDay = Math.floor((taskStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -124,33 +85,11 @@ const TimelineView = () => {
     return { left: `${leftPercent}%`, width: `${widthPercent}%` };
   };
 
-  const getStatusColor = (status: TimelineTask["status"]) => {
-    switch (status) {
-      case "completed": return "bg-success";
-      case "in-progress": return "bg-primary";
-      case "delayed": return "bg-destructive";
-      case "not-started": return "bg-muted";
-      default: return "bg-muted";
-    }
-  };
-
-  const getPriorityColor = (priority: TimelineTask["priority"]) => {
-    switch (priority) {
-      case "high": return "destructive";
-      case "medium": return "warning";
-      case "low": return "secondary";
-      default: return "secondary";
-    }
-  };
-
-  const getStatusLabel = (status: TimelineTask["status"]) => {
-    switch (status) {
-      case "completed": return "Concluído";
-      case "in-progress": return "Em andamento";
-      case "delayed": return "Atrasado";
-      case "not-started": return "Não iniciado";
-      default: return status;
-    }
+  const getStatusColor = (progress: number) => {
+    if (progress >= 100) return "bg-success";
+    if (progress >= 50) return "bg-primary";
+    if (progress >= 25) return "bg-warning";
+    return "bg-muted";
   };
 
   const formatDate = (dateStr: string) => {
@@ -165,12 +104,28 @@ const TimelineView = () => {
     return day === 0 || day === 6;
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
-    toast({
-      title: "Tarefa excluída",
-      description: "A tarefa foi removida da timeline.",
-    });
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('timeline_items')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev => prev.filter(task => task.id !== taskId));
+      toast({
+        title: "Item excluído",
+        description: "O item foi removido da timeline.",
+      });
+    } catch (error) {
+      console.error('Error deleting timeline item:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir item.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -250,15 +205,14 @@ const TimelineView = () => {
                       <div className="w-48 flex-shrink-0 pr-4">
                         <div className="flex items-center justify-between mb-1">
                           <h4 className="text-sm font-medium truncate flex-1">
-                            {task.name}
+                            {task.title}
                           </h4>
                           <div className="flex items-center gap-1">
-                            <Badge 
-                              variant="outline" 
-                              className={getPriorityColor(task.priority)}
-                            >
-                              {task.priority}
-                            </Badge>
+                            {task.milestone && (
+                              <Badge variant="outline">
+                                Milestone
+                              </Badge>
+                            )}
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
                               <Button
                                 size="sm"
@@ -272,14 +226,15 @@ const TimelineView = () => {
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                          <Users className="h-3 w-3" />
-                          <span>{task.assignee}</span>
-                        </div>
+                        {task.description && (
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {task.description}
+                          </div>
+                        )}
                         
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          <span>{formatDate(task.startDate)} - {formatDate(task.endDate)}</span>
+                          <span>{formatDate(task.start_date)} {task.end_date && `- ${formatDate(task.end_date)}`}</span>
                         </div>
                       </div>
 
@@ -290,12 +245,12 @@ const TimelineView = () => {
                         <div
                           className={`
                             absolute top-1 bottom-1 rounded-sm flex items-center px-2 text-xs font-medium text-white
-                            ${getStatusColor(task.status)}
+                            ${getStatusColor(task.progress || 0)}
                           `}
                           style={position}
                         >
                           <div className="flex items-center justify-between w-full">
-                            <span className="truncate">{task.progress}%</span>
+                            <span className="truncate">{task.progress || 0}%</span>
                             <Clock className="h-3 w-3 ml-1" />
                           </div>
                         </div>
@@ -320,16 +275,16 @@ const TimelineView = () => {
               <div key={task.id}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium truncate flex-1 mr-2">
-                    {task.name}
+                    {task.title}
                   </span>
-                  <Badge variant="outline" className={getStatusColor(task.status).replace('bg-', 'text-')}>
-                    {getStatusLabel(task.status)}
+                  <Badge variant="outline">
+                    {task.milestone ? "Milestone" : "Tarefa"}
                   </Badge>
                 </div>
-                <Progress value={task.progress} className="h-2" />
+                <Progress value={task.progress || 0} className="h-2" />
                 <div className="flex items-center justify-between mt-1 text-xs text-muted-foreground">
-                  <span>{task.assignee}</span>
-                  <span>{task.progress}%</span>
+                  <span>{task.description || "Sem descrição"}</span>
+                  <span>{task.progress || 0}%</span>
                 </div>
               </div>
             ))}
@@ -350,21 +305,21 @@ const TimelineView = () => {
               <div className="flex items-center justify-between">
                 <span>Concluídas</span>
                 <span className="font-semibold text-success">
-                  {tasks.filter(t => t.status === "completed").length}
+                  {tasks.filter(t => (t.progress || 0) >= 100).length}
                 </span>
               </div>
               
               <div className="flex items-center justify-between">
                 <span>Em andamento</span>
                 <span className="font-semibold text-primary">
-                  {tasks.filter(t => t.status === "in-progress").length}
+                  {tasks.filter(t => (t.progress || 0) > 0 && (t.progress || 0) < 100).length}
                 </span>
               </div>
               
               <div className="flex items-center justify-between">
                 <span>Não iniciadas</span>
                 <span className="font-semibold text-muted-foreground">
-                  {tasks.filter(t => t.status === "not-started").length}
+                  {tasks.filter(t => (t.progress || 0) === 0).length}
                 </span>
               </div>
               
@@ -372,11 +327,11 @@ const TimelineView = () => {
                 <div className="flex items-center justify-between">
                   <span>Progresso geral</span>
                   <span className="font-semibold">
-                    {Math.round(tasks.reduce((acc, task) => acc + task.progress, 0) / tasks.length)}%
+                    {Math.round(tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / tasks.length)}%
                   </span>
                 </div>
                 <Progress 
-                  value={tasks.reduce((acc, task) => acc + task.progress, 0) / tasks.length} 
+                  value={tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / tasks.length} 
                   className="mt-2"
                 />
               </div>

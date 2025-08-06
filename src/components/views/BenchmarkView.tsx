@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, BarChart3, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,164 +6,155 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BenchmarkData {
   id: string;
-  competitor: string;
-  feature: string;
-  score: number;
-  notes: string;
+  metric: string;
   category: string;
-  lastUpdated: string;
+  current_value?: number;
+  benchmark_value?: number;
+  target_value?: number;
+  notes?: string;
+  updated_at: string;
 }
 
 const BenchmarkView = () => {
   const { toast } = useToast();
-  const [benchmarkData, setBenchmarkData] = useState<BenchmarkData[]>([
-    {
-      id: "1",
-      competitor: "Trello",
-      feature: "Interface do usuário",
-      score: 9,
-      notes: "Interface limpa e intuitiva",
-      category: "UX/UI",
-      lastUpdated: "2024-12-27"
-    },
-    {
-      id: "2",
-      competitor: "Trello",
-      feature: "Kanban Board",
-      score: 10,
-      notes: "Drag & drop fluido, múltiplas colunas",
-      category: "Funcionalidade",
-      lastUpdated: "2024-12-27"
-    },
-    {
-      id: "3",
-      competitor: "Asana",
-      feature: "Gestão de projetos",
-      score: 8,
-      notes: "Boa organização hierárquica",
-      category: "Funcionalidade",
-      lastUpdated: "2024-12-27"
-    },
-    {
-      id: "4",
-      competitor: "Asana",
-      feature: "Timeline/Gantt",
-      score: 9,
-      notes: "Visualização clara de dependências",
-      category: "Funcionalidade",
-      lastUpdated: "2024-12-27"
-    },
-    {
-      id: "5",
-      competitor: "Notion",
-      feature: "Flexibilidade",
-      score: 10,
-      notes: "Altamente customizável",
-      category: "Flexibilidade",
-      lastUpdated: "2024-12-27"
-    },
-    {
-      id: "6",
-      competitor: "Monday.com",
-      feature: "Automações",
-      score: 8,
-      notes: "Boa variedade de triggers",
-      category: "Automação",
-      lastUpdated: "2024-12-27"
-    }
-  ]);
-
+  const { user } = useAuth();
+  const [benchmarkData, setBenchmarkData] = useState<BenchmarkData[]>([]);
   const [newEntry, setNewEntry] = useState({
-    competitor: "",
-    feature: "",
-    score: 5,
-    notes: "",
-    category: ""
+    metric: "",
+    category: "",
+    current_value: 0,
+    benchmark_value: 0,
+    target_value: 0,
+    notes: ""
   });
-
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const categories = ["UX/UI", "Funcionalidade", "Performance", "Flexibilidade", "Automação", "Integrações"];
-  const competitors = ["Trello", "Asana", "Notion", "Monday.com", "Jira", "ClickUp"];
+  const categories = ["UX/UI", "Performance", "Funcionalidade", "Usabilidade", "Segurança", "Eficiência"];
 
-  const handleAddEntry = () => {
-    if (!newEntry.competitor || !newEntry.feature) return;
+  useEffect(() => {
+    if (user) {
+      fetchBenchmarkData();
+    }
+  }, [user]);
 
-    const entry: BenchmarkData = {
-      id: Date.now().toString(),
-      ...newEntry,
-      lastUpdated: new Date().toISOString().split('T')[0]
-    };
+  const fetchBenchmarkData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('benchmark_items')
+        .select('*')
+        .eq('user_id', user?.id);
 
-    setBenchmarkData([...benchmarkData, entry]);
-    setNewEntry({ competitor: "", feature: "", score: 5, notes: "", category: "" });
-    
-    toast({
-      title: "Entrada adicionada",
-      description: "Nova comparação adicionada ao benchmark!",
-    });
+      if (error) throw error;
+      setBenchmarkData(data || []);
+    } catch (error) {
+      console.error('Error fetching benchmark data:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar dados de benchmark.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteEntry = (id: string) => {
-    setBenchmarkData(prev => prev.filter(item => item.id !== id));
-    toast({
-      title: "Entrada removida",
-      description: "Comparação removida do benchmark.",
-    });
+  const handleAddEntry = async () => {
+    if (!newEntry.metric || !newEntry.category) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('benchmark_items')
+        .insert([{
+          ...newEntry,
+          user_id: user?.id,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setBenchmarkData(prev => [...prev, data]);
+      setNewEntry({ metric: "", category: "", current_value: 0, benchmark_value: 0, target_value: 0, notes: "" });
+      
+      toast({
+        title: "Entrada adicionada",
+        description: "Nova métrica adicionada ao benchmark!",
+      });
+    } catch (error) {
+      console.error('Error adding benchmark entry:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar entrada.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 8) return "success";
-    if (score >= 6) return "warning";
+  const handleDeleteEntry = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('benchmark_items')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setBenchmarkData(prev => prev.filter(item => item.id !== id));
+      toast({
+        title: "Entrada removida",
+        description: "Métrica removida do benchmark.",
+      });
+    } catch (error) {
+      console.error('Error deleting benchmark entry:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover entrada.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getScoreColor = (current: number, target: number) => {
+    const percentage = (current / target) * 100;
+    if (percentage >= 90) return "success";
+    if (percentage >= 70) return "warning";
     return "destructive";
   };
 
-  const getScoreBadge = (score: number) => {
-    if (score >= 8) return "Excelente";
-    if (score >= 6) return "Bom";
-    if (score >= 4) return "Regular";
+  const getScoreBadge = (current: number, target: number) => {
+    const percentage = (current / target) * 100;
+    if (percentage >= 90) return "Excelente";
+    if (percentage >= 70) return "Bom";
+    if (percentage >= 50) return "Regular";
     return "Fraco";
   };
 
-  const getAverageByCompetitor = () => {
-    const averages: { [key: string]: number } = {};
-    const counts: { [key: string]: number } = {};
-
-    benchmarkData.forEach(item => {
-      if (!averages[item.competitor]) {
-        averages[item.competitor] = 0;
-        counts[item.competitor] = 0;
-      }
-      averages[item.competitor] += item.score;
-      counts[item.competitor]++;
-    });
-
-    return Object.keys(averages).map(competitor => ({
-      competitor,
-      average: (averages[competitor] / counts[competitor]).toFixed(1)
-    })).sort((a, b) => parseFloat(b.average) - parseFloat(a.average));
-  };
-
   const getAverageByCategory = () => {
-    const averages: { [key: string]: number } = {};
-    const counts: { [key: string]: number } = {};
+    const averages: { [key: string]: { current: number; target: number; count: number } } = {};
 
     benchmarkData.forEach(item => {
       if (!averages[item.category]) {
-        averages[item.category] = 0;
-        counts[item.category] = 0;
+        averages[item.category] = { current: 0, target: 0, count: 0 };
       }
-      averages[item.category] += item.score;
-      counts[item.category]++;
+      averages[item.category].current += item.current_value || 0;
+      averages[item.category].target += item.target_value || 0;
+      averages[item.category].count++;
     });
 
-    return Object.keys(averages).map(category => ({
-      category,
-      average: (averages[category] / counts[category]).toFixed(1)
-    }));
+    return Object.keys(averages).map(category => {
+      const avg = averages[category];
+      return {
+        category,
+        currentAverage: (avg.current / avg.count).toFixed(1),
+        targetAverage: (avg.target / avg.count).toFixed(1)
+      };
+    });
   };
 
   return (
@@ -191,27 +182,32 @@ const BenchmarkView = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-success">
-              {getAverageByCompetitor()[0]?.competitor || "N/A"}
+              {benchmarkData.filter(item => 
+                (item.current_value || 0) >= (item.target_value || 0) * 0.9
+              ).length}
             </div>
-            <div className="text-sm text-muted-foreground">Melhor concorrente</div>
+            <div className="text-sm text-muted-foreground">Metas atingidas</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-warning">
-              {(benchmarkData.reduce((acc, item) => acc + item.score, 0) / benchmarkData.length).toFixed(1)}
+              {benchmarkData.length > 0 ? 
+                ((benchmarkData.reduce((acc, item) => acc + (item.current_value || 0), 0) / 
+                  benchmarkData.reduce((acc, item) => acc + (item.target_value || 1), 0)) * 100).toFixed(1) 
+                : "0"}%
             </div>
-            <div className="text-sm text-muted-foreground">Média geral</div>
+            <div className="text-sm text-muted-foreground">Performance geral</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-foreground">
-              {new Set(benchmarkData.map(item => item.competitor)).size}
+              {new Set(benchmarkData.map(item => item.category)).size}
             </div>
-            <div className="text-sm text-muted-foreground">Concorrentes</div>
+            <div className="text-sm text-muted-foreground">Categorias</div>
           </CardContent>
         </Card>
       </div>
@@ -225,22 +221,11 @@ const BenchmarkView = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-            <select
-              value={newEntry.competitor}
-              onChange={(e) => setNewEntry({ ...newEntry, competitor: e.target.value })}
-              className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
-            >
-              <option value="">Concorrente</option>
-              {competitors.map(comp => (
-                <option key={comp} value={comp}>{comp}</option>
-              ))}
-            </select>
-            
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <Input
-              placeholder="Funcionalidade"
-              value={newEntry.feature}
-              onChange={(e) => setNewEntry({ ...newEntry, feature: e.target.value })}
+              placeholder="Métrica"
+              value={newEntry.metric}
+              onChange={(e) => setNewEntry({ ...newEntry, metric: e.target.value })}
             />
             
             <select
@@ -254,15 +239,26 @@ const BenchmarkView = () => {
               ))}
             </select>
             
-            <select
-              value={newEntry.score}
-              onChange={(e) => setNewEntry({ ...newEntry, score: Number(e.target.value) })}
-              className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
-                <option key={score} value={score}>{score}</option>
-              ))}
-            </select>
+            <Input
+              type="number"
+              placeholder="Valor atual"
+              value={newEntry.current_value}
+              onChange={(e) => setNewEntry({ ...newEntry, current_value: Number(e.target.value) })}
+            />
+            
+            <Input
+              type="number"
+              placeholder="Benchmark"
+              value={newEntry.benchmark_value}
+              onChange={(e) => setNewEntry({ ...newEntry, benchmark_value: Number(e.target.value) })}
+            />
+            
+            <Input
+              type="number"
+              placeholder="Meta"
+              value={newEntry.target_value}
+              onChange={(e) => setNewEntry({ ...newEntry, target_value: Number(e.target.value) })}
+            />
             
             <Input
               placeholder="Observações"
@@ -272,7 +268,7 @@ const BenchmarkView = () => {
             
             <Button 
               onClick={handleAddEntry}
-              disabled={!newEntry.competitor || !newEntry.feature}
+              disabled={!newEntry.metric || !newEntry.category}
             >
               <Plus className="h-4 w-4 mr-2" />
               Adicionar
@@ -294,11 +290,12 @@ const BenchmarkView = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Concorrente</TableHead>
-                  <TableHead>Funcionalidade</TableHead>
+                  <TableHead>Métrica</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead>Pontuação</TableHead>
-                  <TableHead>Avaliação</TableHead>
+                  <TableHead>Valor Atual</TableHead>
+                  <TableHead>Benchmark</TableHead>
+                  <TableHead>Meta</TableHead>
+                  <TableHead>Performance</TableHead>
                   <TableHead>Observações</TableHead>
                   <TableHead>Atualizado</TableHead>
                   <TableHead>Ações</TableHead>
@@ -307,26 +304,23 @@ const BenchmarkView = () => {
               <TableBody>
                 {benchmarkData.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.competitor}</TableCell>
-                    <TableCell>{item.feature}</TableCell>
+                    <TableCell className="font-medium">{item.metric}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{item.category}</Badge>
                     </TableCell>
+                    <TableCell>{item.current_value}</TableCell>
+                    <TableCell>{item.benchmark_value}</TableCell>
+                    <TableCell>{item.target_value}</TableCell>
                     <TableCell>
-                      <div className="text-center font-semibold">
-                        {item.score}/10
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getScoreColor(item.score)}>
-                        {getScoreBadge(item.score)}
+                      <Badge variant="outline" className={getScoreColor(item.current_value || 0, item.target_value || 1)}>
+                        {getScoreBadge(item.current_value || 0, item.target_value || 1)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="max-w-xs truncate" title={item.notes}>
+                    <TableCell className="max-w-xs truncate" title={item.notes || ""}>
                       {item.notes}
                     </TableCell>
                     <TableCell>
-                      {new Date(item.lastUpdated).toLocaleDateString()}
+                      {new Date(item.updated_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -359,32 +353,8 @@ const BenchmarkView = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Ranking por Concorrente
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {getAverageByCompetitor().map((item, index) => (
-                <div key={item.competitor} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">#{index + 1}</span>
-                    <span>{item.competitor}</span>
-                  </div>
-                  <Badge variant="outline" className={getScoreColor(parseFloat(item.average))}>
-                    {item.average}/10
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Média por Categoria
+              Performance por Categoria
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -392,9 +362,14 @@ const BenchmarkView = () => {
               {getAverageByCategory().map((item) => (
                 <div key={item.category} className="flex items-center justify-between">
                   <span>{item.category}</span>
-                  <Badge variant="outline" className={getScoreColor(parseFloat(item.average))}>
-                    {item.average}/10
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {item.currentAverage}/{item.targetAverage}
+                    </span>
+                    <Badge variant="outline" className={getScoreColor(parseFloat(item.currentAverage), parseFloat(item.targetAverage))}>
+                      {((parseFloat(item.currentAverage) / parseFloat(item.targetAverage)) * 100).toFixed(0)}%
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>

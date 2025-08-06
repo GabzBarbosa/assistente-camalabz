@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Save, Lightbulb, HelpCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,87 +6,114 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CSDItem {
   id: string;
   content: string;
   type: "certeza" | "suposicao" | "duvida";
-  project: string;
-  createdAt: string;
+  project_id?: string;
+  created_at: string;
 }
 
 const CSDMatrixView = () => {
   const { toast } = useToast();
-  const [selectedProject, setSelectedProject] = useState("projeto-alpha");
+  const { user } = useAuth();
+  const [selectedProject, setSelectedProject] = useState<string>("");
   const [newItem, setNewItem] = useState({ content: "", type: "certeza" as CSDItem["type"] });
-  
-  const [csdItems, setCsdItems] = useState<CSDItem[]>([
-    {
-      id: "1",
-      content: "O usuário precisa de autenticação por email",
-      type: "certeza",
-      project: "projeto-alpha",
-      createdAt: "2024-12-27"
-    },
-    {
-      id: "2", 
-      content: "A interface deve ser responsiva",
-      type: "certeza",
-      project: "projeto-alpha",
-      createdAt: "2024-12-27"
-    },
-    {
-      id: "3",
-      content: "Os usuários preferem dark mode",
-      type: "suposicao",
-      project: "projeto-alpha",
-      createdAt: "2024-12-27"
-    },
-    {
-      id: "4",
-      content: "Qual será o volume de dados inicial?",
-      type: "duvida",
-      project: "projeto-alpha",
-      createdAt: "2024-12-27"
-    },
-    {
-      id: "5",
-      content: "Como integrar com sistemas legados?",
-      type: "duvida",
-      project: "projeto-beta",
-      createdAt: "2024-12-27"
+  const [csdItems, setCsdItems] = useState<CSDItem[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string; }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchProjects();
+      fetchCSDItems();
     }
-  ]);
+  }, [user]);
 
-  const projects = [
-    { id: "projeto-alpha", name: "Projeto Alpha" },
-    { id: "projeto-beta", name: "Projeto Beta" },
-    { id: "projeto-gamma", name: "Projeto Gamma" }
-  ];
+  useEffect(() => {
+    if (selectedProject) {
+      fetchCSDItems();
+    }
+  }, [selectedProject]);
 
-  const handleAddItem = () => {
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+      setProjects(data || []);
+      if (data && data.length > 0) {
+        setSelectedProject(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchCSDItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('csd_items')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+      setCsdItems(data || []);
+    } catch (error) {
+      console.error('Error fetching CSD items:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar itens CSD.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddItem = async () => {
     if (!newItem.content.trim()) return;
-    
-    const item: CSDItem = {
-      id: Date.now().toString(),
-      content: newItem.content,
-      type: newItem.type,
-      project: selectedProject,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    
-    setCsdItems([...csdItems, item]);
-    setNewItem({ content: "", type: "certeza" });
-    
-    toast({
-      title: "Item adicionado",
-      description: "Novo item adicionado à matriz CSD!",
-    });
+
+    try {
+      const { data, error } = await supabase
+        .from('csd_items')
+        .insert([{
+          content: newItem.content,
+          type: newItem.type,
+          project_id: selectedProject,
+          user_id: user?.id,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCsdItems(prev => [...prev, data]);
+      setNewItem({ content: "", type: "certeza" });
+      
+      toast({
+        title: "Item adicionado",
+        description: "Novo item adicionado à matriz CSD!",
+      });
+    } catch (error) {
+      console.error('Error adding CSD item:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar item.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getFilteredItems = (type: CSDItem["type"]) => {
     return csdItems.filter(item => 
-      item.type === type && item.project === selectedProject
+      item.type === type && item.project_id === selectedProject
     );
   };
 
@@ -228,7 +255,7 @@ const CSDMatrixView = () => {
                       <CardContent className="p-4">
                         <p className="text-sm text-foreground mb-2">{item.content}</p>
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                          <span>{new Date(item.created_at).toLocaleDateString()}</span>
                           <Button
                             variant="ghost"
                             size="sm"

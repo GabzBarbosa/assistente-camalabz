@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, BookOpen, Target, Activity, Users, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,122 +7,119 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Story {
   id: string;
   title: string;
-  description: string;
-  acceptanceCriteria: string[];
-  storyPoints: number;
-  release: string;
-  status: "backlog" | "development" | "testing" | "done";
-}
-
-interface Release {
-  id: string;
-  name: string;
-  expectedResults: string[];
-  activities: string[];
-  stories: Story[];
+  description?: string;
+  acceptance_criteria?: string;
+  story_points?: number;
+  project_id?: string;
+  status: "todo" | "development" | "testing" | "done";
 }
 
 const StoriesView = () => {
   const { toast } = useToast();
-  const [selectedRelease, setSelectedRelease] = useState("release-1");
+  const { user } = useAuth();
+  const [selectedProject, setSelectedProject] = useState<string>("");
   const [newStory, setNewStory] = useState({
     title: "",
     description: "",
     acceptanceCriteria: "",
     storyPoints: 1
   });
+  const [stories, setStories] = useState<Story[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string; }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [releases, setReleases] = useState<Release[]>([
-    {
-      id: "release-1",
-      name: "Release 1.0 - MVP",
-      expectedResults: [
-        "Sistema de autenticação funcional",
-        "CRUD básico de tarefas",
-        "Interface responsiva",
-        "Deploy em produção"
-      ],
-      activities: [
-        "Setup inicial do projeto",
-        "Implementação da autenticação",
-        "Desenvolvimento das funcionalidades core",
-        "Testes e deploy"
-      ],
-      stories: [
-        {
-          id: "story-1",
-          title: "Login de usuário",
-          description: "Como usuário, quero fazer login no sistema para acessar minhas tarefas",
-          acceptanceCriteria: [
-            "Formulário de login com email e senha",
-            "Validação de credenciais",
-            "Redirecionamento após login"
-          ],
-          storyPoints: 5,
-          release: "release-1",
-          status: "development"
-        },
-        {
-          id: "story-2",
-          title: "Criar tarefa",
-          description: "Como usuário, quero criar uma nova tarefa para organizar meu trabalho",
-          acceptanceCriteria: [
-            "Formulário com título e descrição",
-            "Definir prioridade e prazo",
-            "Salvar tarefa no banco"
-          ],
-          storyPoints: 3,
-          release: "release-1",
-          status: "backlog"
-        }
-      ]
-    },
-    {
-      id: "release-2",
-      name: "Release 2.0 - Colaboração",
-      expectedResults: [
-        "Sistema de compartilhamento",
-        "Notificações em tempo real",
-        "Relatórios avançados"
-      ],
-      activities: [
-        "Implementação de websockets",
-        "Sistema de permissões",
-        "Dashboard de analytics"
-      ],
-      stories: []
+  useEffect(() => {
+    if (user) {
+      fetchProjects();
+      fetchStories();
     }
-  ]);
+  }, [user]);
 
-  const handleAddStory = () => {
+  useEffect(() => {
+    if (selectedProject) {
+      fetchStories();
+    }
+  }, [selectedProject]);
+
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+      setProjects(data || []);
+      if (data && data.length > 0) {
+        setSelectedProject(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchStories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stories')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+      setStories(data || []);
+    } catch (error) {
+      console.error('Error fetching stories:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar estórias.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddStory = async () => {
     if (!newStory.title.trim()) return;
 
-    const story: Story = {
-      id: Date.now().toString(),
-      title: newStory.title,
-      description: newStory.description,
-      acceptanceCriteria: newStory.acceptanceCriteria.split('\n').filter(c => c.trim()),
-      storyPoints: newStory.storyPoints,
-      release: selectedRelease,
-      status: "backlog"
-    };
+    try {
+      const { data, error } = await supabase
+        .from('stories')
+        .insert([{
+          title: newStory.title,
+          description: newStory.description,
+          acceptance_criteria: newStory.acceptanceCriteria,
+          story_points: newStory.storyPoints,
+          project_id: selectedProject,
+          user_id: user?.id,
+          status: "todo"
+        }])
+        .select()
+        .single();
 
-    setReleases(prev => prev.map(release => 
-      release.id === selectedRelease 
-        ? { ...release, stories: [...release.stories, story] }
-        : release
-    ));
+      if (error) throw error;
 
-    setNewStory({ title: "", description: "", acceptanceCriteria: "", storyPoints: 1 });
-    
-    toast({
-      title: "Estória criada",
-      description: "Nova estória adicionada com sucesso!",
-    });
+      setStories(prev => [...prev, data]);
+      setNewStory({ title: "", description: "", acceptanceCriteria: "", storyPoints: 1 });
+      
+      toast({
+        title: "Estória criada",
+        description: "Nova estória adicionada com sucesso!",
+      });
+    } catch (error) {
+      console.error('Error adding story:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar estória.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusColor = (status: Story["status"]) => {
@@ -137,7 +134,7 @@ const StoriesView = () => {
 
   const getStatusLabel = (status: Story["status"]) => {
     switch (status) {
-      case "backlog": return "Backlog";
+      case "todo": return "Backlog";
       case "development": return "Desenvolvimento";
       case "testing": return "Testes";
       case "done": return "Concluído";
@@ -145,7 +142,7 @@ const StoriesView = () => {
     }
   };
 
-  const currentRelease = releases.find(r => r.id === selectedRelease);
+  const filteredStories = stories.filter(s => s.project_id === selectedProject);
 
   return (
     <div className="p-6">
@@ -160,13 +157,13 @@ const StoriesView = () => {
           
           <div className="flex items-center gap-4">
             <select 
-              value={selectedRelease}
-              onChange={(e) => setSelectedRelease(e.target.value)}
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
               className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
             >
-              {releases.map((release) => (
-                <option key={release.id} value={release.id}>
-                  {release.name}
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
                 </option>
               ))}
             </select>
@@ -174,54 +171,7 @@ const StoriesView = () => {
         </div>
       </div>
 
-      {currentRelease && (
-        <div className="space-y-6">
-          {/* Release Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GitBranch className="h-5 w-5" />
-                {currentRelease.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Expected Results */}
-                <div>
-                  <h3 className="flex items-center gap-2 font-semibold text-foreground mb-3">
-                    <Target className="h-4 w-4" />
-                    Resultados Esperados
-                  </h3>
-                  <ul className="space-y-2">
-                    {currentRelease.expectedResults.map((result, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                        {result}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Activities */}
-                <div>
-                  <h3 className="flex items-center gap-2 font-semibold text-foreground mb-3">
-                    <Activity className="h-4 w-4" />
-                    Atividades
-                  </h3>
-                  <ul className="space-y-2">
-                    {currentRelease.activities.map((activity, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
-                        <div className="w-1.5 h-1.5 bg-warning rounded-full mt-2 flex-shrink-0" />
-                        {activity}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Separator />
+      <div className="space-y-6">{/* ... keep existing code (other sections) */}
 
           {/* Add New Story */}
           <Card>
@@ -289,10 +239,10 @@ const StoriesView = () => {
           <div>
             <h3 className="flex items-center gap-2 font-semibold text-foreground mb-4">
               <Users className="h-5 w-5" />
-              Estórias de Usuário ({currentRelease.stories.length})
+              Estórias de Usuário ({filteredStories.length})
             </h3>
             
-            {currentRelease.stories.length === 0 ? (
+            {filteredStories.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -306,7 +256,7 @@ const StoriesView = () => {
               </Card>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {currentRelease.stories.map((story) => (
+                {filteredStories.map((story) => (
                   <Card key={story.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
@@ -318,7 +268,7 @@ const StoriesView = () => {
                             {getStatusLabel(story.status)}
                           </Badge>
                           <Badge variant="secondary">
-                            {story.storyPoints} pts
+                            {story.story_points} pts
                           </Badge>
                         </div>
                       </div>
@@ -328,19 +278,14 @@ const StoriesView = () => {
                         {story.description}
                       </p>
                       
-                      {story.acceptanceCriteria.length > 0 && (
+                      {story.acceptance_criteria && (
                         <div>
                           <h4 className="text-sm font-medium text-foreground mb-2">
                             Critérios de Aceite:
                           </h4>
-                          <ul className="space-y-1">
-                            {story.acceptanceCriteria.map((criteria, index) => (
-                              <li key={index} className="text-xs text-muted-foreground flex items-start gap-2">
-                                <div className="w-1 h-1 bg-primary rounded-full mt-1.5 flex-shrink-0" />
-                                {criteria}
-                              </li>
-                            ))}
-                          </ul>
+                          <p className="text-xs text-muted-foreground">
+                            {story.acceptance_criteria}
+                          </p>
                         </div>
                       )}
                     </CardContent>
@@ -350,7 +295,6 @@ const StoriesView = () => {
             )}
           </div>
         </div>
-      )}
     </div>
   );
 };

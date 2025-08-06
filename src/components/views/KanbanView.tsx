@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Paperclip, Calendar, User, Edit2, Trash2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,54 +6,52 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
+
 interface Task {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   status: "todo" | "progress" | "review" | "done";
   priority: "low" | "medium" | "high";
   assignee?: string;
-  dueDate?: string;
-  attachments?: number;
+  due_date?: string;
 }
 const KanbanView = () => {
-  const {
-    toast
-  } = useToast();
-  const [tasks, setTasks] = useState<Task[]>([{
-    id: "1",
-    title: "Implementar sistema de autenticação",
-    description: "Criar login com email e senha",
-    status: "todo",
-    priority: "high",
-    assignee: "João Silva",
-    dueDate: "2024-12-30",
-    attachments: 2
-  }, {
-    id: "2",
-    title: "Revisar documentação da API",
-    description: "Atualizar endpoints e exemplos",
-    status: "progress",
-    priority: "medium",
-    assignee: "Maria Santos",
-    attachments: 1
-  }, {
-    id: "3",
-    title: "Testes de integração",
-    description: "Validar fluxos críticos",
-    status: "review",
-    priority: "high",
-    assignee: "Pedro Costa"
-  }, {
-    id: "4",
-    title: "Deploy em produção",
-    description: "Publicar versão 2.0",
-    status: "done",
-    priority: "low",
-    assignee: "Ana Oliveira"
-  }]);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchTasks();
+    }
+  }, [user]);
+
+  const fetchTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar tarefas.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const columns = [{
     id: "todo",
     title: "A Fazer",
@@ -71,36 +69,71 @@ const KanbanView = () => {
     title: "Concluído",
     color: "done"
   }];
-  const handleAddTask = (columnId: string) => {
+  const handleAddTask = async (columnId: string) => {
     if (!newTaskTitle.trim()) return;
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title: newTaskTitle,
-      description: "",
-      status: columnId as Task["status"],
-      priority: "medium"
-    };
-    setTasks([...tasks, newTask]);
-    setNewTaskTitle("");
-    toast({
-      title: "Tarefa criada",
-      description: "Nova tarefa adicionada com sucesso!"
-    });
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([{
+          title: newTaskTitle,
+          description: "",
+          status: columnId as Task["status"],
+          priority: "medium",
+          user_id: user?.id,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setTasks(prev => [...prev, data]);
+      setNewTaskTitle("");
+      toast({
+        title: "Tarefa criada",
+        description: "Nova tarefa adicionada com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error adding task:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar tarefa.",
+        variant: "destructive",
+      });
+    }
   };
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("taskId", taskId);
   };
-  const handleDrop = (e: React.DragEvent, newStatus: string) => {
+  const handleDrop = async (e: React.DragEvent, newStatus: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("taskId");
-    setTasks(tasks.map(task => task.id === taskId ? {
-      ...task,
-      status: newStatus as Task["status"]
-    } : task));
-    toast({
-      title: "Tarefa movida",
-      description: "Status atualizado com sucesso!"
-    });
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus as Task["status"] })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(tasks.map(task => task.id === taskId ? {
+        ...task,
+        status: newStatus as Task["status"]
+      } : task));
+      
+      toast({
+        title: "Tarefa movida",
+        description: "Status atualizado com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar tarefa.",
+        variant: "destructive",
+      });
+    }
   };
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -110,24 +143,63 @@ const KanbanView = () => {
       ...task
     });
   };
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingTask) return;
-    setTasks(tasks.map(task => task.id === editingTask.id ? editingTask : task));
-    setEditingTask(null);
-    toast({
-      title: "Tarefa atualizada",
-      description: "As alterações foram salvas com sucesso!"
-    });
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          title: editingTask.title,
+          description: editingTask.description,
+          priority: editingTask.priority,
+          assignee: editingTask.assignee,
+          due_date: editingTask.due_date,
+        })
+        .eq('id', editingTask.id);
+
+      if (error) throw error;
+
+      setTasks(tasks.map(task => task.id === editingTask.id ? editingTask : task));
+      setEditingTask(null);
+      toast({
+        title: "Tarefa atualizada",
+        description: "As alterações foram salvas com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar tarefa.",
+        variant: "destructive",
+      });
+    }
   };
   const handleCancelEdit = () => {
     setEditingTask(null);
   };
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-    toast({
-      title: "Tarefa excluída",
-      description: "A tarefa foi removida com sucesso!"
-    });
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(tasks.filter(task => task.id !== taskId));
+      toast({
+        title: "Tarefa excluída",
+        description: "A tarefa foi removida com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir tarefa.",
+        variant: "destructive",
+      });
+    }
   };
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -184,9 +256,9 @@ const KanbanView = () => {
                               <option value="high">Alta</option>
                             </select>
                             
-                            <Input type="date" value={editingTask.dueDate || ""} onChange={e => setEditingTask({
+                            <Input type="date" value={editingTask.due_date || ""} onChange={e => setEditingTask({
                     ...editingTask,
-                    dueDate: e.target.value
+                    due_date: e.target.value
                   })} className="text-xs flex-1" />
                           </div>
                           
@@ -240,15 +312,11 @@ const KanbanView = () => {
                                 <span>{task.assignee}</span>
                               </div>}
                             
-                            {task.attachments && task.attachments > 0 && <div className="flex items-center gap-1">
-                                <Paperclip className="h-3 w-3" />
-                                <span>{task.attachments}</span>
-                              </div>}
                           </div>
                           
-                          {task.dueDate && <div className="flex items-center gap-1">
+                          {task.due_date && <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                              <span>{new Date(task.due_date).toLocaleDateString()}</span>
                             </div>}
                         </div>
                       </div>}
