@@ -13,8 +13,8 @@ interface Task {
   id: string;
   title: string;
   description?: string;
-  status: "todo" | "progress" | "review" | "done";
-  priority: "low" | "medium" | "high";
+  status: "todo" | "in_progress" | "review" | "done";
+  priority: "low" | "medium" | "high" | "urgent";
   assignee?: string;
   due_date?: string;
 }
@@ -57,7 +57,7 @@ const KanbanView = () => {
     title: "A Fazer",
     color: "todo"
   }, {
-    id: "progress",
+    id: "in_progress",
     title: "Em Progresso",
     color: "progress"
   }, {
@@ -203,6 +203,8 @@ const KanbanView = () => {
   };
   const getPriorityColor = (priority: string) => {
     switch (priority) {
+      case "urgent":
+        return "destructive";
       case "high":
         return "destructive";
       case "medium":

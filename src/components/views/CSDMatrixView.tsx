@@ -64,7 +64,7 @@ const CSDMatrixView = () => {
         .eq('user_id', user?.id);
 
       if (error) throw error;
-      setCsdItems(data || []);
+      setCsdItems((data || []).map((d: any) => ({ id: d.id, content: d.content, type: d.type === 'certainty' ? 'certeza' : d.type === 'supposition' ? 'suposicao' : 'duvida', project_id: d.project_id ?? undefined, created_at: d.created_at })));
     } catch (error) {
       console.error('Error fetching CSD items:', error);
       toast({
@@ -85,7 +85,7 @@ const CSDMatrixView = () => {
         .from('csd_items')
         .insert([{
           content: newItem.content,
-          type: newItem.type,
+          type: newItem.type === 'certeza' ? 'certainty' : newItem.type === 'suposicao' ? 'supposition' : 'doubt',
           project_id: selectedProject,
           user_id: user?.id,
         }])
@@ -94,7 +94,7 @@ const CSDMatrixView = () => {
 
       if (error) throw error;
 
-      setCsdItems(prev => [...prev, data]);
+      setCsdItems(prev => [...prev, { id: data.id, content: data.content, type: data.type === 'certainty' ? 'certeza' : data.type === 'supposition' ? 'suposicao' : 'duvida', project_id: data.project_id ?? undefined, created_at: data.created_at }]);
       setNewItem({ content: "", type: "certeza" });
       
       toast({

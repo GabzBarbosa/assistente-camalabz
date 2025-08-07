@@ -17,7 +17,7 @@ interface Story {
   acceptance_criteria?: string;
   story_points?: number;
   project_id?: string;
-  status: "todo" | "development" | "testing" | "done";
+  status: "todo" | "in_progress" | "review" | "done";
 }
 
 const StoriesView = () => {
@@ -123,23 +123,23 @@ const StoriesView = () => {
   };
 
   const getStatusColor = (status: Story["status"]) => {
-    switch (status) {
-      case "backlog": return "secondary";
-      case "development": return "warning";
-      case "testing": return "primary";
-      case "done": return "success";
-      default: return "secondary";
-    }
+  switch (status) {
+    case "todo": return "secondary";
+    case "in_progress": return "warning";
+    case "review": return "primary";
+    case "done": return "success";
+    default: return "secondary";
+  }
   };
 
   const getStatusLabel = (status: Story["status"]) => {
-    switch (status) {
-      case "todo": return "Backlog";
-      case "development": return "Desenvolvimento";
-      case "testing": return "Testes";
-      case "done": return "Concluído";
-      default: return status;
-    }
+  switch (status) {
+    case "todo": return "Backlog";
+    case "in_progress": return "Desenvolvimento";
+    case "review": return "Revisão";
+    case "done": return "Concluído";
+    default: return status;
+  }
   };
 
   const filteredStories = stories.filter(s => s.project_id === selectedProject);
