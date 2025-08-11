@@ -33,13 +33,32 @@ const TimelineView = () => {
 
   const fetchTimelineItems = async () => {
     try {
-      const { data, error } = await supabase
-        .from('timeline_items')
-        .select('*')
-        .eq('user_id', user?.id);
+      const [timelineRes, tasksRes] = await Promise.all([
+        supabase
+          .from('timeline_items')
+          .select('*')
+          .eq('user_id', user?.id),
+        supabase
+          .from('tasks')
+          .select('id,title,created_at,due_date')
+          .eq('user_id', user?.id),
+      ]);
 
-      if (error) throw error;
-      setTasks(data || []);
+      if (timelineRes.error) throw timelineRes.error;
+      if (tasksRes.error) throw tasksRes.error;
+
+      const timelineData = (timelineRes.data || []) as TimelineTask[];
+
+      const taskCreationItems: TimelineTask[] = (tasksRes.data || []).map((t: any) => ({
+        id: `task:${t.id}`,
+        title: `Criação: ${t.title}`,
+        start_date: t.created_at,
+        end_date: t.due_date || t.created_at,
+        progress: 0,
+        milestone: true,
+      }));
+
+      setTasks([...taskCreationItems, ...timelineData]);
     } catch (error) {
       console.error('Error fetching timeline items:', error);
       toast({
@@ -52,18 +71,18 @@ const TimelineView = () => {
     }
   };
 
-  // Gerar datas para o cabeçalho da timeline
+  // Gerar datas para o cabeçalho da timeline (dinâmico: mês atual +/- 30 dias)
   const generateTimelineDates = () => {
-    const startDate = new Date("2024-12-23");
-    const endDate = new Date("2025-01-30");
-    const dates = [];
-    
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // até fim do próximo mês
+    const dates: Date[] = [];
+
     const current = new Date(startDate);
     while (current <= endDate) {
       dates.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
-    
     return dates;
   };
 
@@ -214,14 +233,16 @@ const TimelineView = () => {
                               </Badge>
                             )}
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDeleteTask(task.id)}
-                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                              {!task.id.startsWith('task:') && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteTask(task.id)}
+                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>

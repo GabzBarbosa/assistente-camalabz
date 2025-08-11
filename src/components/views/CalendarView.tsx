@@ -16,31 +16,43 @@ interface Event {
   all_day: boolean;
   color?: string;
 }
+
+interface TaskLite {
+  id: string;
+  title: string;
+  created_at: string;
+  due_date?: string | null;
+  status: string;
+}
 const CalendarView = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month");
   const [events, setEvents] = useState<Event[]>([]);
+  const [taskCreations, setTaskCreations] = useState<TaskLite[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      fetchEvents();
+      fetchCalendarData();
     }
   }, [user]);
 
-  const fetchEvents = async () => {
+  const fetchCalendarData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .eq('user_id', user?.id);
+      const [eventsRes, tasksRes] = await Promise.all([
+        supabase.from('events').select('*').eq('user_id', user?.id),
+        supabase.from('tasks').select('id,title,created_at,due_date,status').eq('user_id', user?.id),
+      ]);
 
-      if (error) throw error;
-      setEvents(data || []);
+      if (eventsRes.error) throw eventsRes.error;
+      if (tasksRes.error) throw tasksRes.error;
+
+      setEvents(eventsRes.data || []);
+      setTaskCreations(tasksRes.data || []);
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('Error fetching calendar data:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar eventos.",
@@ -97,16 +109,42 @@ const CalendarView = () => {
       return newDate;
     });
   };
+  const getWeekDays = (date: Date) => {
+    const dayIdx = date.getDay(); // 0-6, Domingo=0
+    const start = new Date(date);
+    start.setDate(date.getDate() - dayIdx);
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  };
+
   const getEventsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return events.filter(event => {
+
+    const baseEvents = events.filter(event => {
       const eventDate = new Date(event.start_date).toISOString().split('T')[0];
       return eventDate === dateStr;
     });
+
+    const taskEvents = taskCreations
+      .filter(t => new Date(t.created_at).toISOString().split('T')[0] === dateStr)
+      .map<Event>(t => ({
+        id: `task:${t.id}`,
+        title: `[Pendente] ${t.title}`,
+        start_date: t.created_at,
+        end_date: t.created_at,
+        all_day: true,
+        color: undefined,
+      }));
+
+    return [...taskEvents, ...baseEvents];
   };
+
   const getEventTypeColor = (color?: string) => {
-    if (color) {
-      return `bg-[${color}]/10 text-[${color}] border-[${color}]/20`;
+    if (color === 'pending') {
+      return "bg-warning/10 text-warning border-warning/20";
     }
     return "bg-primary/10 text-primary border-primary/20";
   };
@@ -216,12 +254,19 @@ const CalendarView = () => {
                           `} title={event.title}>
                           <span className="block truncate">{event.title}</span>
                           <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                            <Button size="sm" variant="ghost" onClick={e => {
-                      e.stopPropagation();
-                      handleDeleteEvent(event.id);
-                    }} className="h-4 w-4 p-0 text-destructive hover:text-destructive">
-                              <Trash2 className="h-2 w-2" />
-                            </Button>
+                            {!event.id.startsWith('task:') && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleDeleteEvent(event.id);
+                                }}
+                                className="h-4 w-4 p-0 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-2 w-2" />
+                              </Button>
+                            )}
                           </div>
                         </div>)}
                       
@@ -233,16 +278,63 @@ const CalendarView = () => {
           })}
             </div>}
           
-          {viewMode === "week" && <div className="text-center py-12">
-              <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">Visão Semanal</h3>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
+          {viewMode === "week" && <div className="grid grid-cols-7 gap-1">
+              {weekDays.map(day => <div key={day} className="p-3 text-center text-sm font-medium text-muted-foreground border-b bg-violet-100">
+                  {day}
+                </div>)}
+              {getWeekDays(currentDate).map((d, index) => {
+            const dayEvents = getEventsForDate(d);
+            const isToday = d.toDateString() === new Date().toDateString();
+            return <div key={index} className={`
+                      min-h-24 p-2 border border-border hover:bg-muted/50 transition-colors
+                      ${isToday ? "bg-primary/5 border-primary" : ""}
+                   `}>
+                    <div className={`
+                      text-sm font-medium mb-1
+                      ${isToday ? "text-primary" : ""}
+                   `}>
+                      {d.getDate()}
+                    </div>
+                    <div className="space-y-1">
+                      {dayEvents.map(event => <div key={event.id} className={`
+                            text-xs p-1 rounded border text-center truncate group relative
+                            ${getEventTypeColor(event.color)}
+                          `} title={event.title}>
+                          <span className="block truncate">{event.title}</span>
+                          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            {!event.id.startsWith('task:') && (
+                              <Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); handleDeleteEvent(event.id); }} className="h-4 w-4 p-0 text-destructive hover:text-destructive">
+                                <Trash2 className="h-2 w-2" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>)}
+                    </div>
+                  </div>;
+          })}
             </div>}
           
-          {viewMode === "day" && <div className="text-center py-12">
-              <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">Visão Diária</h3>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
+          {viewMode === "day" && <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-lg font-medium">
+                  {currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                </div>
+              </div>
+              <div className="space-y-2">
+                {getEventsForDate(currentDate).map(event => (
+                  <div key={event.id} className={`p-2 rounded border ${getEventTypeColor(event.color)} flex items-center justify-between`}>
+                    <span className="text-sm">{event.title}</span>
+                    {!event.id.startsWith('task:') && (
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteEvent(event.id)} className="h-6 w-6 p-0 text-destructive hover:text-destructive">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {getEventsForDate(currentDate).length === 0 && (
+                  <div className="text-sm text-muted-foreground">Sem eventos</div>
+                )}
+              </div>
             </div>}
         </CardContent>
       </Card>

@@ -23,6 +23,8 @@ const KanbanView = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<Task["priority"] | "">("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState<string>("");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +72,14 @@ const KanbanView = () => {
     color: "done"
   }];
   const handleAddTask = async (columnId: string) => {
-    if (!newTaskTitle.trim()) return;
+    if (!newTaskTitle.trim() || !newTaskPriority || !newTaskDueDate) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Informe título, prioridade e data.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -79,7 +88,8 @@ const KanbanView = () => {
           title: newTaskTitle,
           description: "",
           status: columnId as Task["status"],
-          priority: "medium",
+          priority: newTaskPriority as Task["priority"],
+          due_date: newTaskDueDate,
           user_id: user?.id,
         }])
         .select()
@@ -89,6 +99,8 @@ const KanbanView = () => {
 
       setTasks(prev => [...prev, data]);
       setNewTaskTitle("");
+      setNewTaskPriority("");
+      setNewTaskDueDate("");
       toast({
         title: "Tarefa criada",
         description: "Nova tarefa adicionada com sucesso!"
@@ -327,8 +339,39 @@ const KanbanView = () => {
 
             {/* Add Task */}
             <div className="space-y-2">
-              <Input placeholder="Nova tarefa..." value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} onKeyPress={e => e.key === "Enter" && handleAddTask(column.id)} className="text-sm" />
-              <Button onClick={() => handleAddTask(column.id)} variant="outline" size="sm" className="w-full" disabled={!newTaskTitle.trim()}>
+              <Input
+                placeholder="Nova tarefa..."
+                value={newTaskTitle}
+                onChange={e => setNewTaskTitle(e.target.value)}
+                onKeyPress={e => e.key === "Enter" && handleAddTask(column.id)}
+                className="text-sm"
+              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={newTaskPriority}
+                  onChange={e => setNewTaskPriority(e.target.value as Task["priority"])}
+                  className="px-2 py-1 text-xs border border-border rounded bg-background flex-1"
+                >
+                  <option value="">Prioridade</option>
+                  <option value="low">Baixa</option>
+                  <option value="medium">Média</option>
+                  <option value="high">Alta</option>
+                  <option value="urgent">Urgente</option>
+                </select>
+                <Input
+                  type="date"
+                  value={newTaskDueDate}
+                  onChange={e => setNewTaskDueDate(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <Button
+                onClick={() => handleAddTask(column.id)}
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={!newTaskTitle.trim() || !newTaskPriority || !newTaskDueDate}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar
               </Button>
