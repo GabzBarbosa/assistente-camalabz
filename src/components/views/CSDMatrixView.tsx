@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { useSelection } from "@/hooks/use-selection";
 
 interface CSDItem {
   id: string;
@@ -20,6 +21,7 @@ interface CSDItem {
 const CSDMatrixView = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { selectedProjectId } = useSelection();
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [newItem, setNewItem] = useState({ content: "", type: "certeza" as CSDItem["type"] });
   const [csdItems, setCsdItems] = useState<CSDItem[]>([]);
@@ -38,6 +40,12 @@ const CSDMatrixView = () => {
       fetchCSDItems();
     }
   }, [selectedProject]);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      setSelectedProject(selectedProjectId);
+    }
+  }, [selectedProjectId]);
 
   const fetchProjects = async () => {
     try {
@@ -86,7 +94,7 @@ const CSDMatrixView = () => {
         .insert([{
           content: newItem.content,
           type: newItem.type === 'certeza' ? 'certainty' : newItem.type === 'suposicao' ? 'supposition' : 'doubt',
-          project_id: selectedProject,
+          project_id: selectedProjectId || selectedProject,
           user_id: user?.id,
         }])
         .select()

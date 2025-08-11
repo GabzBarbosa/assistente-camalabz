@@ -129,14 +129,14 @@ const CalendarView = () => {
     });
 
     const taskEvents = taskCreations
-      .filter(t => new Date(t.created_at).toISOString().split('T')[0] === dateStr)
+      .filter(t => t.due_date && new Date(t.due_date).toISOString().split('T')[0] === dateStr)
       .map<Event>(t => ({
         id: `task:${t.id}`,
         title: `[Pendente] ${t.title}`,
-        start_date: t.created_at,
-        end_date: t.created_at,
+        start_date: t.due_date as string,
+        end_date: t.due_date as string,
         all_day: true,
-        color: undefined,
+        color: 'pending',
       }));
 
     return [...taskEvents, ...baseEvents];

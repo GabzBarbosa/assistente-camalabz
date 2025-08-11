@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { useSelection } from "@/hooks/use-selection";
 
 interface Story {
   id: string;
@@ -23,6 +24,7 @@ interface Story {
 const StoriesView = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { setSelection } = useSelection();
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [newStory, setNewStory] = useState({
     title: "",
@@ -44,6 +46,7 @@ const StoriesView = () => {
   useEffect(() => {
     if (selectedProject) {
       fetchStories();
+      setSelection({ projectId: selectedProject });
     }
   }, [selectedProject]);
 
@@ -158,7 +161,7 @@ const StoriesView = () => {
           <div className="flex items-center gap-4">
             <select 
               value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
+              onChange={(e) => { setSelectedProject(e.target.value); setSelection({ projectId: e.target.value }); }}
               className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
             >
               {projects.map((project) => (
@@ -257,7 +260,14 @@ const StoriesView = () => {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {filteredStories.map((story) => (
-                  <Card key={story.id}>
+                  <Card 
+                    key={story.id}
+                    className="cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => {
+                      setSelection({ storyId: story.id, projectId: story.project_id || null });
+                      toast({ title: "Estória selecionada", description: `\"${story.title}\" vinculada às demais guias.` });
+                    }}
+                  >
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-lg line-clamp-2">
@@ -277,7 +287,6 @@ const StoriesView = () => {
                       <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
                         {story.description}
                       </p>
-                      
                       {story.acceptance_criteria && (
                         <div>
                           <h4 className="text-sm font-medium text-foreground mb-2">

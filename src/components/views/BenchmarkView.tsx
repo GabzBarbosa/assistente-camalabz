@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { useSelection } from "@/hooks/use-selection";
 
 interface BenchmarkData {
   id: string;
@@ -23,6 +24,7 @@ interface BenchmarkData {
 const BenchmarkView = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { selectedProjectId } = useSelection();
   const [benchmarkData, setBenchmarkData] = useState<BenchmarkData[]>([]);
   const [newEntry, setNewEntry] = useState({
     metric: "",
@@ -41,15 +43,20 @@ const BenchmarkView = () => {
     if (user) {
       fetchBenchmarkData();
     }
-  }, [user]);
+  }, [user, selectedProjectId]);
 
   const fetchBenchmarkData = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('benchmark_items')
         .select('*')
         .eq('user_id', user?.id);
 
+      if (selectedProjectId) {
+        query = query.eq('project_id', selectedProjectId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setBenchmarkData(data || []);
     } catch (error) {
@@ -73,6 +80,7 @@ const BenchmarkView = () => {
         .insert([{
           ...newEntry,
           user_id: user?.id,
+          project_id: selectedProjectId || null,
         }])
         .select()
         .single();
