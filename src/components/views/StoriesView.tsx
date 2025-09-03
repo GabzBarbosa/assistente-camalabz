@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Plus, BookOpen, Target, Activity, Users, GitBranch } from "lucide-react";
+import { Plus, BookOpen, Target, Activity, Users, GitBranch, Lightbulb, User, Tag, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,8 +32,13 @@ const StoriesView = () => {
     title: "",
     description: "",
     acceptanceCriteria: "",
-    storyPoints: 1
+    storyPoints: 1,
+    priority: "medium" as "low" | "medium" | "high",
+    epic: "",
+    persona: "",
+    tags: ""
   });
+  const [isCreating, setIsCreating] = useState(false);
   const [stories, setStories] = useState<Story[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string; }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +96,16 @@ const StoriesView = () => {
   };
 
   const handleAddStory = async () => {
-    if (!newStory.title.trim()) return;
+    if (!newStory.title.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "O título da estória é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
 
     try {
       const { data, error } = await supabase
@@ -99,6 +115,7 @@ const StoriesView = () => {
           description: newStory.description,
           acceptance_criteria: newStory.acceptanceCriteria,
           story_points: newStory.storyPoints,
+          priority: newStory.priority,
           project_id: selectedProject,
           user_id: user?.id,
           status: "todo"
@@ -109,20 +126,53 @@ const StoriesView = () => {
       if (error) throw error;
 
       setStories(prev => [...prev, data]);
-      setNewStory({ title: "", description: "", acceptanceCriteria: "", storyPoints: 1 });
+      setNewStory({ 
+        title: "", 
+        description: "", 
+        acceptanceCriteria: "", 
+        storyPoints: 1,
+        priority: "medium",
+        epic: "",
+        persona: "",
+        tags: ""
+      });
       
       toast({
-        title: "Estória criada",
-        description: "Nova estória adicionada com sucesso!",
+        title: "✨ Estória criada com sucesso!",
+        description: `"${newStory.title}" foi adicionada ao backlog.`,
       });
     } catch (error) {
       console.error('Error adding story:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao criar estória.",
+        title: "Erro ao criar estória",
+        description: "Verifique os dados e tente novamente.",
         variant: "destructive",
       });
+    } finally {
+      setIsCreating(false);
     }
+  };
+
+  const generateStoryTemplate = () => {
+    const templates = [
+      "Como [tipo de usuário], quero [funcionalidade] para [benefício/valor]",
+      "Como administrador, quero gerenciar usuários para controlar o acesso ao sistema",
+      "Como cliente, quero visualizar meu histórico de pedidos para acompanhar minhas compras"
+    ];
+    
+    const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+    setNewStory({ ...newStory, description: randomTemplate });
+  };
+
+  const generateAcceptanceCriteria = () => {
+    const criteria = [
+      "• Dado que [contexto], quando [ação], então [resultado esperado]",
+      "• O sistema deve validar todos os campos obrigatórios",
+      "• A funcionalidade deve ser responsiva em dispositivos móveis",
+      "• Deve exibir mensagens de erro claras para o usuário"
+    ];
+    
+    setNewStory({ ...newStory, acceptanceCriteria: criteria.join("\n") });
   };
 
   const getStatusColor = (status: Story["status"]) => {
@@ -176,60 +226,194 @@ const StoriesView = () => {
 
       <div className="space-y-6">{/* ... keep existing code (other sections) */}
 
-          {/* Add New Story */}
-          <Card>
+          {/* Enhanced Story Creation */}
+          <Card className="border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5" />
-                Adicionar Estória
+                <Zap className="h-5 w-5 text-primary" />
+                Criar Nova Estória de Usuário
               </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Defina uma funcionalidade detalhada com critérios claros de aceite
+              </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2">
-                  <Input
-                    placeholder="Título da estória..."
-                    value={newStory.title}
-                    onChange={(e) => setNewStory({ ...newStory, title: e.target.value })}
-                    className="mb-3"
-                  />
-                  <Textarea
-                    placeholder="Como [usuário], quero [funcionalidade] para [benefício]..."
-                    value={newStory.description}
-                    onChange={(e) => setNewStory({ ...newStory, description: e.target.value })}
-                    className="min-h-20 mb-3"
-                  />
-                  <Textarea
-                    placeholder="Critérios de aceite (um por linha)..."
-                    value={newStory.acceptanceCriteria}
-                    onChange={(e) => setNewStory({ ...newStory, acceptanceCriteria: e.target.value })}
-                    className="min-h-16"
-                  />
+            <CardContent className="space-y-6">
+              {/* Main Story Details */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-4">
+                  <div>
+                    <Label htmlFor="story-title" className="flex items-center gap-2 mb-2">
+                      <Target className="h-4 w-4" />
+                      Título da Estória *
+                    </Label>
+                    <Input
+                      id="story-title"
+                      placeholder="Ex: Cadastro de usuário no sistema"
+                      value={newStory.title}
+                      onChange={(e) => setNewStory({ ...newStory, title: e.target.value })}
+                      className={!newStory.title.trim() ? "border-destructive" : ""}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="story-description" className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Descrição (User Story)
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={generateStoryTemplate}
+                        className="text-xs"
+                      >
+                        <Lightbulb className="h-3 w-3 mr-1" />
+                        Template
+                      </Button>
+                    </div>
+                    <Textarea
+                      id="story-description"
+                      placeholder="Como [tipo de usuário], quero [funcionalidade] para [benefício/valor]..."
+                      value={newStory.description}
+                      onChange={(e) => setNewStory({ ...newStory, description: e.target.value })}
+                      className="min-h-20"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="acceptance-criteria" className="flex items-center gap-2">
+                        <Activity className="h-4 w-4" />
+                        Critérios de Aceite
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={generateAcceptanceCriteria}
+                        className="text-xs"
+                      >
+                        <Lightbulb className="h-3 w-3 mr-1" />
+                        Exemplo
+                      </Button>
+                    </div>
+                    <Textarea
+                      id="acceptance-criteria"
+                      placeholder="• Critério 1: Dado que... quando... então...&#10;• Critério 2: O sistema deve...&#10;• Critério 3: A interface deve..."
+                      value={newStory.acceptanceCriteria}
+                      onChange={(e) => setNewStory({ ...newStory, acceptanceCriteria: e.target.value })}
+                      className="min-h-24"
+                    />
+                  </div>
                 </div>
                 
+                {/* Story Metadata */}
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-foreground block mb-2">
-                      Story Points
-                    </label>
-                    <select
-                      value={newStory.storyPoints}
-                      onChange={(e) => setNewStory({ ...newStory, storyPoints: Number(e.target.value) })}
-                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                    <Label className="flex items-center gap-2 mb-2">
+                      <GitBranch className="h-4 w-4" />
+                      Prioridade
+                    </Label>
+                    <Select
+                      value={newStory.priority}
+                      onValueChange={(value: "low" | "medium" | "high") => 
+                        setNewStory({ ...newStory, priority: value })
+                      }
                     >
-                      {[1, 2, 3, 5, 8, 13, 21].map(points => (
-                        <option key={points} value={points}>{points}</option>
-                      ))}
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high">🔴 Alta</SelectItem>
+                        <SelectItem value="medium">🟡 Média</SelectItem>
+                        <SelectItem value="low">🟢 Baixa</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  <div>
+                    <Label className="flex items-center gap-2 mb-2">
+                      <Target className="h-4 w-4" />
+                      Story Points
+                    </Label>
+                    <Select
+                      value={newStory.storyPoints.toString()}
+                      onValueChange={(value) => 
+                        setNewStory({ ...newStory, storyPoints: Number(value) })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 5, 8, 13, 21].map(points => (
+                          <SelectItem key={points} value={points.toString()}>
+                            {points} ponto{points > 1 ? 's' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="epic" className="flex items-center gap-2 mb-2">
+                      <BookOpen className="h-4 w-4" />
+                      Epic/Feature
+                    </Label>
+                    <Input
+                      id="epic"
+                      placeholder="Ex: Autenticação"
+                      value={newStory.epic}
+                      onChange={(e) => setNewStory({ ...newStory, epic: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="persona" className="flex items-center gap-2 mb-2">
+                      <Users className="h-4 w-4" />
+                      Persona
+                    </Label>
+                    <Input
+                      id="persona"
+                      placeholder="Ex: Usuário Admin"
+                      value={newStory.persona}
+                      onChange={(e) => setNewStory({ ...newStory, persona: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="tags" className="flex items-center gap-2 mb-2">
+                      <Tag className="h-4 w-4" />
+                      Tags
+                    </Label>
+                    <Input
+                      id="tags"
+                      placeholder="Ex: frontend, api, critical"
+                      value={newStory.tags}
+                      onChange={(e) => setNewStory({ ...newStory, tags: e.target.value })}
+                    />
+                  </div>
+                  
+                  <Separator />
                   
                   <Button 
                     onClick={handleAddStory}
-                    disabled={!newStory.title.trim()}
+                    disabled={!newStory.title.trim() || isCreating}
                     className="w-full"
+                    size="lg"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Criar Estória
+                    {isCreating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Criando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Criar Estória
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
