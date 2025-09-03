@@ -68,6 +68,13 @@ const StoriesView = () => {
       setProjects(data || []);
       if (data && data.length > 0) {
         setSelectedProject(data[0].id);
+      } else {
+        // If no projects exist, show a message to create one first
+        toast({
+          title: "Nenhum projeto encontrado",
+          description: "Crie um projeto primeiro antes de adicionar estórias.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -105,6 +112,15 @@ const StoriesView = () => {
       return;
     }
 
+    if (!selectedProject) {
+      toast({
+        title: "Projeto obrigatório",
+        description: "Selecione um projeto antes de criar a estória.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCreating(true);
 
     try {
@@ -116,7 +132,7 @@ const StoriesView = () => {
           acceptance_criteria: newStory.acceptanceCriteria,
           story_points: newStory.storyPoints,
           priority: newStory.priority,
-          project_id: selectedProject,
+          project_id: selectedProject || null, // Send null instead of empty string
           user_id: user?.id,
           status: "todo"
         }])
@@ -208,19 +224,26 @@ const StoriesView = () => {
             </p>
           </div>
           
-          <div className="flex items-center gap-4">
-            <select 
-              value={selectedProject}
-              onChange={(e) => { setSelectedProject(e.target.value); setSelection({ projectId: e.target.value }); }}
-              className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div className="flex items-center gap-4">
+                {projects.length > 0 ? (
+                  <select 
+                    value={selectedProject}
+                    onChange={(e) => { setSelectedProject(e.target.value); setSelection({ projectId: e.target.value }); }}
+                    className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                  >
+                    <option value="">Selecione um projeto</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Nenhum projeto encontrado - crie um projeto primeiro
+                  </div>
+                )}
+              </div>
         </div>
       </div>
 
