@@ -226,21 +226,31 @@ const StoriesView = () => {
           
               <div className="flex items-center gap-4">
                 {projects.length > 0 ? (
-                  <select 
-                    value={selectedProject}
-                    onChange={(e) => { setSelectedProject(e.target.value); setSelection({ projectId: e.target.value }); }}
-                    className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  >
-                    <option value="">Selecione um projeto</option>
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-foreground whitespace-nowrap">
+                      Projeto:
+                    </label>
+                    <select 
+                      value={selectedProject}
+                      onChange={(e) => { setSelectedProject(e.target.value); setSelection({ projectId: e.target.value }); }}
+                      className="min-w-48 px-3 py-2 border-2 border-primary/20 rounded-lg bg-background text-foreground hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
+                    >
+                      <option value="">📁 Selecione um projeto</option>
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          📂 {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Nenhum projeto encontrado - crie um projeto primeiro
+                  <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <span className="text-amber-600">⚠️</span>
+                    <div className="text-sm text-amber-800">
+                      <strong>Nenhum projeto encontrado</strong>
+                      <br />
+                      <span className="text-xs">Vá para a guia Kanban e crie um projeto primeiro</span>
+                    </div>
                   </div>
                 )}
               </div>
