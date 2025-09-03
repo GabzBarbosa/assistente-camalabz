@@ -172,10 +172,6 @@ const Login = () => {
               </Button>
             </div>
           </form>
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Usuário padrão: admin@admin.com</p>
-            <p>Senha padrão: admin183</p>
-          </div>
         </CardContent>
       </Card>
     </div>
