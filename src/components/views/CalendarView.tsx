@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Edit2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Edit2, Trash2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +20,18 @@ interface Event {
   end_date: string;
   all_day: boolean;
   color?: string;
+  description?: string;
+  project_id?: string;
+}
+
+interface EditingEvent {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  all_day: boolean;
+  color: string;
 }
 
 interface TaskLite {
@@ -32,6 +49,10 @@ const CalendarView = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [taskCreations, setTaskCreations] = useState<TaskLite[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modal states
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<EditingEvent | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -173,6 +194,71 @@ const CalendarView = () => {
       });
     }
   };
+
+  const handleEventClick = (event: Event) => {
+    if (event.id.startsWith('task:')) return; // Não permite editar tarefas
+    
+    setEditingEvent({
+      id: event.id,
+      title: event.title,
+      description: event.description || "",
+      start_date: event.start_date,
+      end_date: event.end_date,
+      all_day: event.all_day,
+      color: event.color || "#3b82f6"
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsEditModalOpen(false);
+    setEditingEvent(null);
+  };
+
+  const handleUpdateEvent = async () => {
+    if (!editingEvent) return;
+
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({
+          title: editingEvent.title,
+          description: editingEvent.description,
+          start_date: editingEvent.start_date,
+          end_date: editingEvent.end_date,
+          all_day: editingEvent.all_day,
+          color: editingEvent.color,
+        })
+        .eq('id', editingEvent.id);
+
+      if (error) throw error;
+
+      // Atualizar o evento na lista local
+      setEvents(prev => prev.map(event => 
+        event.id === editingEvent.id 
+          ? { ...event, ...editingEvent }
+          : event
+      ));
+
+      handleCloseModal();
+      toast({
+        title: "Evento atualizado",
+        description: "As alterações foram salvas com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error updating event:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar evento.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatDateForInput = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toISOString().slice(0, 16);
+  };
   return <div className="p-6">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -248,27 +334,33 @@ const CalendarView = () => {
                     </div>
                     
                     <div className="space-y-1">
-                      {dayEvents.slice(0, 2).map(event => <div key={event.id} className={`
-                            text-xs p-1 rounded border text-center truncate group relative
-                            ${getEventTypeColor(event.color)}
-                          `} title={event.title}>
-                          <span className="block truncate">{event.title}</span>
-                          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                            {!event.id.startsWith('task:') && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  handleDeleteEvent(event.id);
-                                }}
-                                className="h-4 w-4 p-0 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-2 w-2" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>)}
+                       {dayEvents.slice(0, 2).map(event => <div 
+                        key={event.id} 
+                        className={`
+                             text-xs p-1 rounded border text-center truncate group relative cursor-pointer
+                             ${getEventTypeColor(event.color)}
+                             hover:opacity-80 transition-opacity
+                           `} 
+                        title={event.title}
+                        onClick={() => handleEventClick(event)}
+                      >
+                           <span className="block truncate">{event.title}</span>
+                           <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                             {!event.id.startsWith('task:') && (
+                               <Button
+                                 size="sm"
+                                 variant="ghost"
+                                 onClick={e => {
+                                   e.stopPropagation();
+                                   handleDeleteEvent(event.id);
+                                 }}
+                                 className="h-4 w-4 p-0 text-destructive hover:text-destructive"
+                               >
+                                 <Trash2 className="h-2 w-2" />
+                               </Button>
+                             )}
+                           </div>
+                         </div>)}
                       
                       {dayEvents.length > 2 && <div className="text-xs text-muted-foreground text-center">
                           +{dayEvents.length - 2} mais
@@ -295,21 +387,27 @@ const CalendarView = () => {
                    `}>
                       {d.getDate()}
                     </div>
-                    <div className="space-y-1">
-                      {dayEvents.map(event => <div key={event.id} className={`
-                            text-xs p-1 rounded border text-center truncate group relative
-                            ${getEventTypeColor(event.color)}
-                          `} title={event.title}>
-                          <span className="block truncate">{event.title}</span>
-                          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                            {!event.id.startsWith('task:') && (
-                              <Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); handleDeleteEvent(event.id); }} className="h-4 w-4 p-0 text-destructive hover:text-destructive">
-                                <Trash2 className="h-2 w-2" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>)}
-                    </div>
+                     <div className="space-y-1">
+                       {dayEvents.map(event => <div 
+                        key={event.id} 
+                        className={`
+                             text-xs p-1 rounded border text-center truncate group relative cursor-pointer
+                             ${getEventTypeColor(event.color)}
+                             hover:opacity-80 transition-opacity
+                           `} 
+                        title={event.title}
+                        onClick={() => handleEventClick(event)}
+                      >
+                           <span className="block truncate">{event.title}</span>
+                           <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                             {!event.id.startsWith('task:') && (
+                               <Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); handleDeleteEvent(event.id); }} className="h-4 w-4 p-0 text-destructive hover:text-destructive">
+                                 <Trash2 className="h-2 w-2" />
+                               </Button>
+                             )}
+                           </div>
+                         </div>)}
+                     </div>
                   </div>;
           })}
             </div>}
@@ -320,17 +418,29 @@ const CalendarView = () => {
                   {currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
                 </div>
               </div>
-              <div className="space-y-2">
-                {getEventsForDate(currentDate).map(event => (
-                  <div key={event.id} className={`p-2 rounded border ${getEventTypeColor(event.color)} flex items-center justify-between`}>
-                    <span className="text-sm">{event.title}</span>
-                    {!event.id.startsWith('task:') && (
-                      <Button size="sm" variant="ghost" onClick={() => handleDeleteEvent(event.id)} className="h-6 w-6 p-0 text-destructive hover:text-destructive">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+               <div className="space-y-2">
+                 {getEventsForDate(currentDate).map(event => (
+                   <div 
+                    key={event.id} 
+                    className={`p-2 rounded border ${getEventTypeColor(event.color)} flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity`}
+                    onClick={() => handleEventClick(event)}
+                   >
+                     <span className="text-sm">{event.title}</span>
+                     {!event.id.startsWith('task:') && (
+                       <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteEvent(event.id);
+                        }} 
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                       >
+                         <Trash2 className="h-3 w-3" />
+                       </Button>
+                     )}
+                   </div>
+                 ))}
                 {getEventsForDate(currentDate).length === 0 && (
                   <div className="text-sm text-muted-foreground">Sem eventos</div>
                 )}
@@ -338,6 +448,110 @@ const CalendarView = () => {
             </div>}
         </CardContent>
       </Card>
+      
+      {/* Modal de Edição de Evento */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit2 className="h-5 w-5" />
+              Editar Evento
+            </DialogTitle>
+          </DialogHeader>
+          
+          {editingEvent && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="event-title">Título</Label>
+                <Input
+                  id="event-title"
+                  value={editingEvent.title}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                  placeholder="Digite o título do evento"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="event-description">Descrição</Label>
+                <Textarea
+                  id="event-description"
+                  value={editingEvent.description}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                  placeholder="Adicione uma descrição (opcional)"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="start-date">Data/Hora de Início</Label>
+                  <Input
+                    id="start-date"
+                    type="datetime-local"
+                    value={formatDateForInput(editingEvent.start_date)}
+                    onChange={(e) => setEditingEvent({ 
+                      ...editingEvent, 
+                      start_date: new Date(e.target.value).toISOString() 
+                    })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="end-date">Data/Hora de Fim</Label>
+                  <Input
+                    id="end-date"
+                    type="datetime-local"
+                    value={formatDateForInput(editingEvent.end_date)}
+                    onChange={(e) => setEditingEvent({ 
+                      ...editingEvent, 
+                      end_date: new Date(e.target.value).toISOString() 
+                    })}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="all-day"
+                    checked={editingEvent.all_day}
+                    onCheckedChange={(checked) => setEditingEvent({ 
+                      ...editingEvent, 
+                      all_day: checked 
+                    })}
+                  />
+                  <Label htmlFor="all-day">Evento de dia inteiro</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="event-color">Cor:</Label>
+                  <input
+                    id="event-color"
+                    type="color"
+                    value={editingEvent.color}
+                    onChange={(e) => setEditingEvent({ 
+                      ...editingEvent, 
+                      color: e.target.value 
+                    })}
+                    className="w-10 h-10 rounded border border-border cursor-pointer"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={handleCloseModal}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateEvent} disabled={!editingEvent.title.trim()}>
+                  <Check className="h-4 w-4 mr-2" />
+                  Salvar Alterações
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>;
 };
 export default CalendarView;
