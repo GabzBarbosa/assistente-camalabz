@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { Plus, Paperclip, Calendar, User, Edit2, Trash2, X, Check } from "lucide-react";
+import { Plus, Paperclip, Calendar, User, Edit2, Trash2, X, Check, FolderPlus, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { useSelection } from "@/hooks/use-selection";
 
 interface Task {
   id: string;
@@ -21,26 +23,68 @@ interface Task {
 const KanbanView = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { setSelection } = useSelection();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string; color: string; }[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [creationMode, setCreationMode] = useState<"task" | "project">("task");
+  
+  // Task states
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<Task["priority"] | "">("");
   const [newTaskDueDate, setNewTaskDueDate] = useState<string>("");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  
+  // Project states
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [newProjectColor, setNewProjectColor] = useState("#3b82f6");
+  
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
+      fetchProjects();
       fetchTasks();
     }
   }, [user]);
 
-  const fetchTasks = async () => {
+  useEffect(() => {
+    if (selectedProject) {
+      fetchTasks();
+    }
+  }, [selectedProject]);
+
+  const fetchProjects = async () => {
     try {
       const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+      setProjects(data || []);
+      if (data && data.length > 0 && !selectedProject) {
+        setSelectedProject(data[0].id);
+        setSelection({ projectId: data[0].id });
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      let query = supabase
         .from('tasks')
         .select('*')
         .eq('user_id', user?.id);
 
+      if (selectedProject) {
+        query = query.eq('project_id', selectedProject);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setTasks(data || []);
     } catch (error) {
@@ -72,6 +116,15 @@ const KanbanView = () => {
     color: "done"
   }];
   const handleAddTask = async (columnId: string) => {
+    if (!selectedProject) {
+      toast({
+        title: "Projeto não selecionado",
+        description: "Selecione um projeto para criar tarefas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!newTaskTitle.trim() || !newTaskPriority || !newTaskDueDate) {
       toast({
         title: "Campos obrigatórios",
@@ -90,6 +143,7 @@ const KanbanView = () => {
           status: columnId as Task["status"],
           priority: newTaskPriority as Task["priority"],
           due_date: newTaskDueDate,
+          project_id: selectedProject,
           user_id: user?.id,
         }])
         .select()
@@ -113,6 +167,57 @@ const KanbanView = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleAddProject = async () => {
+    if (!newProjectName.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Informe o nome do projeto.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([{
+          name: newProjectName,
+          description: newProjectDescription,
+          color: newProjectColor,
+          user_id: user?.id,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProjects(prev => [...prev, data]);
+      setSelectedProject(data.id);
+      setSelection({ projectId: data.id });
+      setNewProjectName("");
+      setNewProjectDescription("");
+      setNewProjectColor("#3b82f6");
+      setCreationMode("task");
+      
+      toast({
+        title: "Projeto criado",
+        description: "Novo projeto adicionado com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error adding project:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar projeto.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProjectSelect = (projectId: string) => {
+    setSelectedProject(projectId);
+    setSelection({ projectId });
   };
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("taskId", taskId);
@@ -229,10 +334,111 @@ const KanbanView = () => {
   };
   return <div className="p-6">
       <div className="mb-6">
-        <h2 className="font-semibold mb-2 text-2xl text-purple-950 text-center">Quadro Kanban</h2>
-        <p className="text-muted-foreground text-center">
-          Organize suas tarefas por status e acompanhe o progresso do projeto
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-semibold mb-2 text-2xl text-purple-950">Quadro Kanban</h2>
+            <p className="text-muted-foreground">
+              Organize suas tarefas por status e acompanhe o progresso do projeto
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Project Selector */}
+            {projects.length > 0 ? (
+              <Select value={selectedProject} onValueChange={handleProjectSelect}>
+                <SelectTrigger className="min-w-48">
+                  <SelectValue placeholder="📁 Selecione um projeto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      📂 {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <span className="text-amber-600">⚠️</span>
+                <div className="text-sm text-amber-800">
+                  <strong>Nenhum projeto encontrado</strong>
+                  <br />
+                  <span className="text-xs">Crie um projeto primeiro</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Creation Mode Toggle */}
+            <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
+              <Button
+                size="sm"
+                variant={creationMode === "task" ? "default" : "ghost"}
+                onClick={() => setCreationMode("task")}
+                className="h-8"
+              >
+                <CheckSquare className="h-4 w-4 mr-1" />
+                Tarefas
+              </Button>
+              <Button
+                size="sm"
+                variant={creationMode === "project" ? "default" : "ghost"}
+                onClick={() => setCreationMode("project")}
+                className="h-8"
+              >
+                <FolderPlus className="h-4 w-4 mr-1" />
+                Projetos
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Project Creation Form */}
+        {creationMode === "project" && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FolderPlus className="h-5 w-5" />
+                Criar Novo Projeto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="md:col-span-2">
+                  <Input
+                    placeholder="Nome do projeto..."
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Input
+                    placeholder="Descrição (opcional)..."
+                    value={newProjectDescription}
+                    onChange={(e) => setNewProjectDescription(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={newProjectColor}
+                    onChange={(e) => setNewProjectColor(e.target.value)}
+                    className="w-10 h-10 rounded border border-border cursor-pointer"
+                  />
+                  <Button
+                    onClick={handleAddProject}
+                    disabled={!newProjectName.trim()}
+                    className="flex-1"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Projeto
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-h-[600px]">
@@ -337,45 +543,54 @@ const KanbanView = () => {
                   </div>)}
             </div>
 
-            {/* Add Task */}
-            <div className="space-y-2">
-              <Input
-                placeholder="Nova tarefa..."
-                value={newTaskTitle}
-                onChange={e => setNewTaskTitle(e.target.value)}
-                onKeyPress={e => e.key === "Enter" && handleAddTask(column.id)}
-                className="text-sm"
-              />
-              <div className="flex items-center gap-2">
-                <select
-                  value={newTaskPriority}
-                  onChange={e => setNewTaskPriority(e.target.value as Task["priority"])}
-                  className="px-2 py-1 text-xs border border-border rounded bg-background flex-1"
-                >
-                  <option value="">Prioridade</option>
-                  <option value="low">Baixa</option>
-                  <option value="medium">Média</option>
-                  <option value="high">Alta</option>
-                  <option value="urgent">Urgente</option>
-                </select>
+            {/* Add Task - Only show if in task mode and project is selected */}
+            {creationMode === "task" && selectedProject && (
+              <div className="space-y-2">
                 <Input
-                  type="date"
-                  value={newTaskDueDate}
-                  onChange={e => setNewTaskDueDate(e.target.value)}
-                  className="text-xs"
+                  placeholder="Nova tarefa..."
+                  value={newTaskTitle}
+                  onChange={e => setNewTaskTitle(e.target.value)}
+                  onKeyPress={e => e.key === "Enter" && handleAddTask(column.id)}
+                  className="text-sm"
                 />
+                <div className="flex items-center gap-2">
+                  <select
+                    value={newTaskPriority}
+                    onChange={e => setNewTaskPriority(e.target.value as Task["priority"])}
+                    className="px-2 py-1 text-xs border border-border rounded bg-background flex-1"
+                  >
+                    <option value="">Prioridade</option>
+                    <option value="low">Baixa</option>
+                    <option value="medium">Média</option>
+                    <option value="high">Alta</option>
+                    <option value="urgent">Urgente</option>
+                  </select>
+                  <Input
+                    type="date"
+                    value={newTaskDueDate}
+                    onChange={e => setNewTaskDueDate(e.target.value)}
+                    className="text-xs"
+                  />
+                </div>
+                <Button
+                  onClick={() => handleAddTask(column.id)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={!newTaskTitle.trim() || !newTaskPriority || !newTaskDueDate}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
               </div>
-              <Button
-                onClick={() => handleAddTask(column.id)}
-                variant="outline"
-                size="sm"
-                className="w-full"
-                disabled={!newTaskTitle.trim() || !newTaskPriority || !newTaskDueDate}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar
-              </Button>
-            </div>
+            )}
+
+            {/* Show message when no project selected */}
+            {creationMode === "task" && !selectedProject && (
+              <div className="text-center py-4 text-sm text-muted-foreground">
+                Selecione um projeto para adicionar tarefas
+              </div>
+            )}
           </div>)}
       </div>
     </div>;
