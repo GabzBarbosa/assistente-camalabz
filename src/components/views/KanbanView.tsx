@@ -379,16 +379,33 @@ const KanbanView = () => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
-        return "destructive";
+        return "priority-badge-urgent";
       case "high":
-        return "destructive";
+        return "priority-badge-high";
       case "medium":
-        return "warning";
+        return "priority-badge-medium";
       case "low":
-        return "secondary";
+        return "priority-badge-low";
       default:
-        return "secondary";
+        return "priority-badge-medium";
     }
+  };
+
+  const getDueDateAlert = (dueDate: string | null | undefined) => {
+    if (!dueDate) return null;
+    
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return { type: 'overdue', text: `${Math.abs(diffDays)} dia(s) atrasado` };
+    } else if (diffDays <= 3) {
+      return { type: 'due-soon', text: `${diffDays} dia(s) restante(s)` };
+    }
+    
+    return null;
   };
   return <div className="p-6">
       <div className="mb-6">
@@ -606,6 +623,17 @@ const KanbanView = () => {
                           <Badge variant="outline" className={getPriorityColor(task.priority)}>
                             {task.priority}
                           </Badge>
+                          {(() => {
+                            const alert = getDueDateAlert(task.due_date);
+                            return alert ? (
+                              <Badge 
+                                variant="outline" 
+                                className={alert.type === 'overdue' ? 'alert-overdue' : 'alert-due-soon'}
+                              >
+                                {alert.text}
+                              </Badge>
+                            ) : null;
+                          })()}
                         </div>
                         
                         {task.description && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">

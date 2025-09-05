@@ -71,6 +71,22 @@ export default {
 					review: 'hsl(var(--kanban-review))',
 					done: 'hsl(var(--kanban-done))'
 				},
+				priority: {
+					low: 'hsl(var(--priority-low))',
+					'low-bg': 'hsl(var(--priority-low-bg))',
+					medium: 'hsl(var(--priority-medium))',
+					'medium-bg': 'hsl(var(--priority-medium-bg))',
+					high: 'hsl(var(--priority-high))',
+					'high-bg': 'hsl(var(--priority-high-bg))',
+					urgent: 'hsl(var(--priority-urgent))',
+					'urgent-bg': 'hsl(var(--priority-urgent-bg))'
+				},
+				alert: {
+					'due-soon': 'hsl(var(--alert-due-soon))',
+					'due-soon-bg': 'hsl(var(--alert-due-soon-bg))',
+					overdue: 'hsl(var(--alert-overdue))',
+					'overdue-bg': 'hsl(var(--alert-overdue-bg))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

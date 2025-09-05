@@ -52,6 +52,22 @@
     --kanban-review: 267 57% 95%;
     --kanban-done: 142 76% 95%;
 
+    /* Priority colors */
+    --priority-low: 142 76% 36%;
+    --priority-low-bg: 142 76% 95%;
+    --priority-medium: 38 92% 50%;
+    --priority-medium-bg: 38 92% 95%;
+    --priority-high: 25 95% 53%;
+    --priority-high-bg: 25 95% 95%;
+    --priority-urgent: 0 84% 60%;
+    --priority-urgent-bg: 0 84% 95%;
+
+    /* Alert colors */
+    --alert-due-soon: 38 92% 50%;
+    --alert-due-soon-bg: 38 92% 95%;
+    --alert-overdue: 0 84% 60%;
+    --alert-overdue-bg: 0 84% 95%;
+
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
@@ -152,5 +168,31 @@
   
   .status-badge-done {
     @apply bg-kanban-done text-success border border-success/20;
+  }
+
+  /* Priority badges */
+  .priority-badge-low {
+    @apply bg-priority-low-bg text-priority-low border border-priority-low/20;
+  }
+  
+  .priority-badge-medium {
+    @apply bg-priority-medium-bg text-priority-medium border border-priority-medium/20;
+  }
+  
+  .priority-badge-high {
+    @apply bg-priority-high-bg text-priority-high border border-priority-high/20;
+  }
+  
+  .priority-badge-urgent {
+    @apply bg-priority-urgent-bg text-priority-urgent border border-priority-urgent/20;
+  }
+
+  /* Alert badges */
+  .alert-due-soon {
+    @apply bg-alert-due-soon-bg text-alert-due-soon border border-alert-due-soon/20;
+  }
+  
+  .alert-overdue {
+    @apply bg-alert-overdue-bg text-alert-overdue border border-alert-overdue/20;
   }
 }
