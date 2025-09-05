@@ -25,7 +25,7 @@ const KanbanView = () => {
   const { user } = useAuth();
   const { setSelection } = useSelection();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<{ id: string; name: string; color: string; }[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string; color: string; emoji?: string | null; }[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [creationMode, setCreationMode] = useState<"task" | "project">("task");
   
@@ -39,6 +39,7 @@ const KanbanView = () => {
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
   const [newProjectColor, setNewProjectColor] = useState("#3b82f6");
+  const [newProjectEmoji, setNewProjectEmoji] = useState("📂");
   
   const [loading, setLoading] = useState(true);
 
@@ -186,6 +187,7 @@ const KanbanView = () => {
           name: newProjectName,
           description: newProjectDescription,
           color: newProjectColor,
+          emoji: newProjectEmoji,
           user_id: user?.id,
         }])
         .select()
@@ -199,6 +201,7 @@ const KanbanView = () => {
       setNewProjectName("");
       setNewProjectDescription("");
       setNewProjectColor("#3b82f6");
+      setNewProjectEmoji("📂");
       setCreationMode("task");
       
       toast({
@@ -408,7 +411,7 @@ const KanbanView = () => {
                   <SelectContent>
                     {projects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
-                        📂 {project.name}
+                        {project.emoji || "📂"} {project.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -470,7 +473,7 @@ const KanbanView = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <div className="md:col-span-2">
                   <Input
                     placeholder="Nome do projeto..."
@@ -486,6 +489,22 @@ const KanbanView = () => {
                     onChange={(e) => setNewProjectDescription(e.target.value)}
                     className="w-full"
                   />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {['📂', '💼', '🎯', '🚀', '📊', '🛠️', '🎨', '📱', '💡', '🏆', '📝', '🌟'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className={`w-8 h-8 rounded border text-lg ${
+                          newProjectEmoji === emoji ? 'border-primary bg-primary/10' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                        onClick={() => setNewProjectEmoji(emoji)}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <input

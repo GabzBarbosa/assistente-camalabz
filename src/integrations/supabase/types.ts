@@ -193,6 +193,7 @@ export type Database = {
           color: string | null
           created_at: string
           description: string | null
+          emoji: string | null
           id: string
           name: string
           updated_at: string
@@ -202,6 +203,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           description?: string | null
+          emoji?: string | null
           id?: string
           name: string
           updated_at?: string
@@ -211,6 +213,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           description?: string | null
+          emoji?: string | null
           id?: string
           name?: string
           updated_at?: string
