@@ -215,6 +215,61 @@ const KanbanView = () => {
     }
   };
 
+  const handleDeleteProject = async (projectId: string) => {
+    if (projects.length <= 1) {
+      toast({
+        title: "Não é possível excluir",
+        description: "Deve haver pelo menos um projeto.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // First delete all tasks associated with this project
+      const { error: tasksError } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('project_id', projectId);
+
+      if (tasksError) throw tasksError;
+
+      // Then delete the project
+      const { error: projectError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (projectError) throw projectError;
+
+      // Update local state
+      const updatedProjects = projects.filter(p => p.id !== projectId);
+      setProjects(updatedProjects);
+      
+      // Select the first remaining project or clear selection
+      if (selectedProject === projectId) {
+        const newSelectedProject = updatedProjects.length > 0 ? updatedProjects[0].id : "";
+        setSelectedProject(newSelectedProject);
+        setSelection({ projectId: newSelectedProject });
+      }
+
+      // Refresh tasks
+      fetchTasks();
+
+      toast({
+        title: "Projeto excluído",
+        description: "Projeto e suas tarefas foram removidos com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir projeto.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleProjectSelect = (projectId: string) => {
     setSelectedProject(projectId);
     setSelection({ projectId });
@@ -345,18 +400,31 @@ const KanbanView = () => {
           <div className="flex items-center gap-4">
             {/* Project Selector */}
             {projects.length > 0 ? (
-              <Select value={selectedProject} onValueChange={handleProjectSelect}>
-                <SelectTrigger className="min-w-48">
-                  <SelectValue placeholder="📁 Selecione um projeto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      📂 {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select value={selectedProject} onValueChange={handleProjectSelect}>
+                  <SelectTrigger className="min-w-48">
+                    <SelectValue placeholder="📁 Selecione um projeto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        📂 {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedProject && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeleteProject(selectedProject)}
+                    className="h-10 w-10 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    title="Excluir projeto"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <span className="text-amber-600">⚠️</span>
