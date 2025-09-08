@@ -1,15 +1,19 @@
 import { useState, useEffect } from "react";
-import { Plus, Paperclip, Calendar, User, Edit2, Trash2, X, Check, FolderPlus, CheckSquare } from "lucide-react";
+import { Plus, Paperclip, Calendar, User, Edit2, Trash2, X, Check, FolderPlus, CheckSquare, MoreHorizontal, Search, Filter, LinkIcon, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useSelection } from "@/hooks/use-selection";
+import { TaskCreateModal } from "@/components/TaskCreateModal";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Task {
   id: string;
@@ -19,6 +23,12 @@ interface Task {
   priority: "low" | "medium" | "high" | "urgent";
   assignee?: string;
   due_date?: string;
+  links?: string[] | null;
+  parent_id?: string | null;
+  project_id?: string | null;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 const KanbanView = () => {
   const { toast } = useToast();
@@ -98,6 +108,10 @@ const KanbanView = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const refetch = () => {
+    fetchTasks();
   };
   const columns = [{
     id: "todo",
@@ -458,15 +472,12 @@ const KanbanView = () => {
             
             {/* Creation Mode Toggle */}
             <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
-              <Button
-                size="sm"
-                variant={creationMode === "task" ? "default" : "ghost"}
-                onClick={() => setCreationMode("task")}
-                className="h-8"
-              >
-                <CheckSquare className="h-4 w-4 mr-1" />
-                Tarefas
-              </Button>
+              <TaskCreateModal projectId={selectedProject} onTaskCreated={refetch}>
+                <Button className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nova Tarefa
+                </Button>
+              </TaskCreateModal>
               <Button
                 size="sm"
                 variant={creationMode === "project" ? "default" : "ghost"}
@@ -639,71 +650,102 @@ const KanbanView = () => {
                         {task.description && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
                             {task.description}
                           </p>}
+
+                        {task.assignee && <p className="text-xs text-muted-foreground">
+                          Responsável: {task.assignee}
+                        </p>}
                         
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex items-center gap-3">
-                            {task.assignee && <div className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                <span>{task.assignee}</span>
+                        {task.due_date && <p className="text-xs text-muted-foreground">
+                          Vencimento: {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>}
+
+                        {/* Links */}
+                        {task.links && task.links.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {task.links.slice(0, 2).map((link, index) => (
+                              <a
+                                key={index}
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded truncate max-w-[120px]"
+                              >
+                                <LinkIcon className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">Link</span>
+                              </a>
+                            ))}
+                            {task.links.length > 2 && (
+                              <span className="text-xs text-muted-foreground">
+                                +{task.links.length - 2} mais
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Subtarefas */}
+                        {(() => {
+                          const subtasks = tasks?.filter(t => t.parent_id === task.id) || [];
+                          if (subtasks.length > 0) {
+                            const completedSubtasks = subtasks.filter(st => st.status === 'done').length;
+                            return (
+                              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                <ChevronRight className="h-3 w-3" />
+                                <span>{completedSubtasks}/{subtasks.length} subtarefas</span>
+                                <div className="flex-1 bg-muted rounded-full h-1.5">
+                                  <div 
+                                    className="bg-primary h-1.5 rounded-full transition-all" 
+                                    style={{ width: `${(completedSubtasks / subtasks.length) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+
+                        {/* Indicador de subtarefa */}
+                        {task.parent_id && (
+                          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                            <ChevronRight className="h-3 w-3 rotate-90" />
+                            <span>Subtarefa</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-between mt-3">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            {task.due_date && <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{new Date(task.due_date).toLocaleDateString()}</span>
                               </div>}
-                            
                           </div>
                           
-                          {task.due_date && <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{new Date(task.due_date).toLocaleDateString()}</span>
-                            </div>}
+                          <div className="flex items-center gap-1">
+                            <TaskCreateModal 
+                              parentTask={{ id: task.id, title: task.title }} 
+                              projectId={selectedProject}
+                              onTaskCreated={refetch}
+                            >
+                              <Button variant="ghost" size="sm" title="Criar subtarefa">
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </TaskCreateModal>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditTask(task)}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>}
                   </div>)}
             </div>
 
-            {/* Add Task - Only show if in task mode and project is selected */}
-            {creationMode === "task" && selectedProject && (
-              <div className="space-y-2">
-                <Input
-                  placeholder="Nova tarefa..."
-                  value={newTaskTitle}
-                  onChange={e => setNewTaskTitle(e.target.value)}
-                  onKeyPress={e => e.key === "Enter" && handleAddTask(column.id)}
-                  className="text-sm"
-                />
-                <div className="flex items-center gap-2">
-                  <select
-                    value={newTaskPriority}
-                    onChange={e => setNewTaskPriority(e.target.value as Task["priority"])}
-                    className="px-2 py-1 text-xs border border-border rounded bg-background flex-1"
-                  >
-                    <option value="">Prioridade</option>
-                    <option value="low">Baixa</option>
-                    <option value="medium">Média</option>
-                    <option value="high">Alta</option>
-                    <option value="urgent">Urgente</option>
-                  </select>
-                  <Input
-                    type="date"
-                    value={newTaskDueDate}
-                    onChange={e => setNewTaskDueDate(e.target.value)}
-                    className="text-xs"
-                  />
-                </div>
-                <Button
-                  onClick={() => handleAddTask(column.id)}
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  disabled={!newTaskTitle.trim() || !newTaskPriority || !newTaskDueDate}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar
-                </Button>
-              </div>
-            )}
-
             {/* Show message when no project selected */}
-            {creationMode === "task" && !selectedProject && (
+            {!selectedProject && (
               <div className="text-center py-4 text-sm text-muted-foreground">
-                Selecione um projeto para adicionar tarefas
+                Selecione um projeto para visualizar tarefas
               </div>
             )}
           </div>)}
