@@ -7,31 +7,31 @@
 
 @layer base {
   :root {
-    /* Base colors - Purple, Pink, White, Black theme */
-    --background: 0 0% 98%;
-    --foreground: 0 0% 8%;
+    /* Base colors - White, Light Gray */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 5%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 8%;
+    --card-foreground: 0 0% 5%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 8%;
+    --popover-foreground: 0 0% 5%;
     
     /* Primary - Deep Purple */
-    --primary: 270 91% 25%;
-    --primary-foreground: 0 0% 98%;
-    --primary-light: 270 91% 85%;
-    --primary-dark: 270 91% 15%;
+    --primary: 268 83% 20%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 268 83% 85%;
+    --primary-dark: 268 83% 15%;
     
-    /* Secondary - Pink */
-    --secondary: 335 100% 75%;
-    --secondary-foreground: 0 0% 8%;
+    /* Secondary - Hot Pink */
+    --secondary: 330 85% 60%;
+    --secondary-foreground: 0 0% 100%;
     
-    /* Muted tones */
-    --muted: 270 20% 95%;
-    --muted-foreground: 270 15% 45%;
+    /* Muted tones - Light grays */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
     
     /* Accent - Light Purple */
-    --accent: 280 100% 90%;
-    --accent-foreground: 270 91% 25%;
+    --accent: 270 100% 95%;
+    --accent-foreground: 268 83% 20%;
     
     /* Status colors */
     --success: 142 76% 36%;
@@ -42,176 +42,138 @@
     --destructive-foreground: 0 0% 100%;
     
     /* Borders and inputs */
-    --border: 270 20% 88%;
-    --input: 270 20% 92%;
-    --ring: 270 91% 25%;
+    --border: 0 0% 90%;
+    --input: 0 0% 96%;
+    --ring: 268 83% 20%;
     
     /* Kanban colors - Purple/Pink themed */
-    --kanban-todo: 270 91% 97%;
+    --kanban-todo: 268 83% 97%;
     --kanban-progress: 280 100% 95%;
-    --kanban-review: 335 100% 95%;
+    --kanban-review: 330 85% 95%;
     --kanban-done: 142 76% 95%;
 
     /* Priority colors - Purple/Pink themed */
-    --priority-low: 142 76% 36%;
+    --priority-low: 142 76% 40%;
     --priority-low-bg: 142 76% 95%;
-    --priority-medium: 280 100% 50%;
+    --priority-medium: 280 100% 45%;
     --priority-medium-bg: 280 100% 95%;
-    --priority-high: 335 100% 60%;
-    --priority-high-bg: 335 100% 95%;
-    --priority-urgent: 320 100% 45%;
+    --priority-high: 330 85% 55%;
+    --priority-high-bg: 330 85% 95%;
+    --priority-urgent: 320 100% 40%;
     --priority-urgent-bg: 320 100% 95%;
 
     /* Alert colors */
-    --alert-due-soon: 335 100% 60%;
-    --alert-due-soon-bg: 335 100% 95%;
-    --alert-overdue: 320 100% 45%;
+    --alert-due-soon: 330 85% 55%;
+    --alert-due-soon-bg: 330 85% 95%;
+    --alert-overdue: 320 100% 40%;
     --alert-overdue-bg: 320 100% 95%;
 
     /* Gradients - Purple to Pink */
-    --gradient-primary: linear-gradient(135deg, hsl(270, 91%, 25%), hsl(335, 100%, 75%));
-    --gradient-secondary: linear-gradient(135deg, hsl(280, 100%, 35%), hsl(320, 100%, 80%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0, 0%, 98%), hsl(270, 20%, 95%));
-    --gradient-hero: linear-gradient(135deg, hsl(270, 91%, 25%) 0%, hsl(280, 100%, 35%) 50%, hsl(335, 100%, 75%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(268, 83%, 20%), hsl(330, 85%, 60%));
+    --gradient-secondary: linear-gradient(135deg, hsl(280, 100%, 30%), hsl(320, 100%, 70%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0, 0%, 100%), hsl(0, 0%, 96%));
+    --gradient-hero: linear-gradient(135deg, hsl(268, 83%, 20%) 0%, hsl(280, 100%, 30%) 50%, hsl(330, 85%, 60%) 100%);
 
-    /* Shadows with purple tint */
-    --shadow-sm: 0 1px 2px 0 hsl(270, 91%, 25%, 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(270, 91%, 25%, 0.1), 0 2px 4px -1px hsl(270, 91%, 25%, 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(270, 91%, 25%, 0.1), 0 4px 6px -2px hsl(270, 91%, 25%, 0.05);
-    --shadow-glow: 0 0 20px hsl(270, 91%, 65%, 0.3);
+    /* Shadows with subtle purple tint */
+    --shadow-sm: 0 1px 2px 0 hsl(268, 83%, 20%, 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(268, 83%, 20%, 0.1), 0 2px 4px -1px hsl(268, 83%, 20%, 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(268, 83%, 20%, 0.1), 0 4px 6px -2px hsl(268, 83%, 20%, 0.05);
+    --shadow-glow: 0 0 20px hsl(268, 83%, 60%, 0.3);
 
     --radius: 0.75rem;
 
-    --sidebar-background: 270 20% 97%;
-    --sidebar-foreground: 270 15% 45%;
-    --sidebar-primary: 270 91% 25%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 280 100% 95%;
-    --sidebar-accent-foreground: 270 91% 25%;
-    --sidebar-border: 270 20% 88%;
-    --sidebar-ring: 270 91% 25%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 45%;
+    --sidebar-primary: 268 83% 20%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 100% 95%;
+    --sidebar-accent-foreground: 268 83% 20%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 268 83% 20%;
   }
 
   .dark {
     /* Dark mode - Black backgrounds with purple/pink accents */
-    --background: 0 0% 8%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 95%;
+    --background: 0 0% 3%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
     
     /* Primary - Bright Purple in dark mode */
-    --primary: 270 91% 65%;
-    --primary-foreground: 0 0% 8%;
-    --primary-light: 270 91% 25%;
-    --primary-dark: 270 91% 80%;
+    --primary: 268 83% 70%;
+    --primary-foreground: 0 0% 3%;
+    --primary-light: 268 83% 25%;
+    --primary-dark: 268 83% 85%;
     
     /* Secondary - Bright Pink in dark mode */
-    --secondary: 335 100% 80%;
-    --secondary-foreground: 0 0% 8%;
+    --secondary: 330 85% 75%;
+    --secondary-foreground: 0 0% 3%;
     
     /* Muted tones for dark mode */
-    --muted: 0 0% 16%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
     
     /* Accent */
-    --accent: 280 100% 20%;
-    --accent-foreground: 270 91% 65%;
+    --accent: 270 100% 15%;
+    --accent-foreground: 268 83% 70%;
     
     /* Status colors for dark mode */
     --success: 142 76% 50%;
-    --success-foreground: 0 0% 8%;
+    --success-foreground: 0 0% 3%;
     --warning: 38 92% 60%;
-    --warning-foreground: 0 0% 8%;
+    --warning-foreground: 0 0% 3%;
     --destructive: 0 84% 70%;
-    --destructive-foreground: 0 0% 8%;
+    --destructive-foreground: 0 0% 3%;
     
     /* Borders and inputs for dark mode */
-    --border: 0 0% 20%;
-    --input: 0 0% 16%;
-    --ring: 270 91% 65%;
+    --border: 0 0% 18%;
+    --input: 0 0% 15%;
+    --ring: 268 83% 70%;
     
     /* Kanban colors for dark mode */
-    --kanban-todo: 270 91% 15%;
-    --kanban-progress: 280 100% 15%;
-    --kanban-review: 335 100% 15%;
-    --kanban-done: 142 76% 15%;
+    --kanban-todo: 268 83% 12%;
+    --kanban-progress: 280 100% 12%;
+    --kanban-review: 330 85% 12%;
+    --kanban-done: 142 76% 12%;
 
     /* Priority colors for dark mode */
-    --priority-low: 142 76% 50%;
-    --priority-low-bg: 142 76% 15%;
-    --priority-medium: 280 100% 70%;
-    --priority-medium-bg: 280 100% 15%;
-    --priority-high: 335 100% 75%;
-    --priority-high-bg: 335 100% 15%;
-    --priority-urgent: 320 100% 70%;
-    --priority-urgent-bg: 320 100% 15%;
+    --priority-low: 142 76% 55%;
+    --priority-low-bg: 142 76% 12%;
+    --priority-medium: 280 100% 75%;
+    --priority-medium-bg: 280 100% 12%;
+    --priority-high: 330 85% 80%;
+    --priority-high-bg: 330 85% 12%;
+    --priority-urgent: 320 100% 75%;
+    --priority-urgent-bg: 320 100% 12%;
 
     /* Alert colors for dark mode */
-    --alert-due-soon: 335 100% 75%;
-    --alert-due-soon-bg: 335 100% 15%;
-    --alert-overdue: 320 100% 70%;
-    --alert-overdue-bg: 320 100% 15%;
+    --alert-due-soon: 330 85% 80%;
+    --alert-due-soon-bg: 330 85% 12%;
+    --alert-overdue: 320 100% 75%;
+    --alert-overdue-bg: 320 100% 12%;
 
     /* Gradients for dark mode */
-    --gradient-primary: linear-gradient(135deg, hsl(270, 91%, 65%), hsl(335, 100%, 80%));
-    --gradient-secondary: linear-gradient(135deg, hsl(280, 100%, 70%), hsl(320, 100%, 85%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0, 0%, 8%), hsl(0, 0%, 16%));
-    --gradient-hero: linear-gradient(135deg, hsl(270, 91%, 65%) 0%, hsl(280, 100%, 70%) 50%, hsl(335, 100%, 80%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(268, 83%, 70%), hsl(330, 85%, 75%));
+    --gradient-secondary: linear-gradient(135deg, hsl(280, 100%, 75%), hsl(320, 100%, 80%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0, 0%, 3%), hsl(0, 0%, 15%));
+    --gradient-hero: linear-gradient(135deg, hsl(268, 83%, 70%) 0%, hsl(280, 100%, 75%) 50%, hsl(330, 85%, 75%) 100%);
 
     /* Shadows for dark mode */
-    --shadow-sm: 0 1px 2px 0 hsl(0, 0%, 0%, 0.3);
-    --shadow-md: 0 4px 6px -1px hsl(0, 0%, 0%, 0.4), 0 2px 4px -1px hsl(0, 0%, 0%, 0.2);
-    --shadow-lg: 0 10px 15px -3px hsl(0, 0%, 0%, 0.4), 0 4px 6px -2px hsl(0, 0%, 0%, 0.2);
-    --shadow-glow: 0 0 20px hsl(270, 91%, 65%, 0.4);
+    --shadow-sm: 0 1px 2px 0 hsl(0, 0%, 0%, 0.4);
+    --shadow-md: 0 4px 6px -1px hsl(0, 0%, 0%, 0.5), 0 2px 4px -1px hsl(0, 0%, 0%, 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0, 0%, 0%, 0.5), 0 4px 6px -2px hsl(0, 0%, 0%, 0.3);
+    --shadow-glow: 0 0 20px hsl(268, 83%, 70%, 0.4);
 
-    --sidebar-background: 0 0% 12%;
-    --sidebar-foreground: 0 0% 70%;
-    --sidebar-primary: 270 91% 65%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 280 100% 20%;
-    --sidebar-accent-foreground: 270 91% 65%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 270 91% 65%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 75%;
+    --sidebar-primary: 268 83% 70%;
+    --sidebar-primary-foreground: 0 0% 3%;
+    --sidebar-accent: 270 100% 15%;
+    --sidebar-accent-foreground: 268 83% 70%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 268 83% 70%;
   }
 }
 
