@@ -57,13 +57,13 @@ const PlanningView = () => {
   const fetchPlanningItems = async () => {
     try {
       const { data, error } = await supabase
-        .from("planning_items")
+        .from("planning_items" as any)
         .select("*")
         .eq("user_id", user?.id)
         .order("date", { ascending: true });
 
       if (error) throw error;
-      setPlanningItems(data || []);
+      setPlanningItems((data as any) || []);
     } catch (error) {
       console.error("Erro ao carregar itens de planejamento:", error);
       toast({
@@ -90,7 +90,7 @@ const PlanningView = () => {
         : [];
 
       const { error } = await supabase
-        .from("planning_items")
+        .from("planning_items" as any)
         .insert([{
           title: formData.title,
           description: formData.description || null,
@@ -135,7 +135,7 @@ const PlanningView = () => {
   const updateItemStatus = async (id: string, status: PlanningItem["status"]) => {
     try {
       const { error } = await supabase
-        .from("planning_items")
+        .from("planning_items" as any)
         .update({ status })
         .eq("id", id);
 

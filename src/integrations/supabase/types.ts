@@ -158,6 +158,54 @@ export type Database = {
           },
         ]
       }
+      planning_items: {
+        Row: {
+          created_at: string
+          date: string
+          description: string | null
+          duration: number | null
+          id: string
+          notes: string | null
+          participants: string[] | null
+          project_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          notes?: string | null
+          participants?: string[] | null
+          project_id?: string | null
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          notes?: string | null
+          participants?: string[] | null
+          project_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
