@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Calendar, Grid3X3, BookOpen, BarChart3, GanttChart, LogOut } from "lucide-react";
+import { LayoutDashboard, Calendar, Grid3X3, BookOpen, BarChart3, GanttChart, LogOut, Users } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-dashboard.jpg";
@@ -11,6 +11,7 @@ import CSDMatrixView from "@/components/views/CSDMatrixView";
 import StoriesView from "@/components/views/StoriesView";
 import BenchmarkView from "@/components/views/BenchmarkView";
 import TimelineView from "@/components/views/TimelineView";
+import PlanningView from "@/components/views/PlanningView";
 const Index = () => {
   const [activeTab, setActiveTab] = useState("kanban");
   const { user, loading, signOut } = useAuth();
@@ -62,6 +63,10 @@ const Index = () => {
     id: "timeline",
     label: "Timeline",
     icon: GanttChart
+  }, {
+    id: "planning",
+    label: "Planejamento",
+    icon: Users
   }];
   return <div className="min-h-screen bg-background">
       {/* Header */}
@@ -82,7 +87,7 @@ const Index = () => {
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
               <div className="text-center">
-                <div className="font-semibold text-primary">6</div>
+                <div className="font-semibold text-primary">7</div>
                 <div>Visualizações</div>
               </div>
               <div className="text-center">
@@ -107,7 +112,7 @@ const Index = () => {
       <div className="border-b border-border bg-card">
         <div className="px-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6 bg-transparent p-0 h-auto">
+            <TabsList className="grid w-full grid-cols-7 bg-transparent p-0 h-auto">
               {tabs.map(tab => {
               const Icon = tab.icon;
               return <TabsTrigger key={tab.id} value={tab.id} className={`
@@ -144,6 +149,10 @@ const Index = () => {
               
               <TabsContent value="timeline" className="mt-0">
                 <TimelineView />
+              </TabsContent>
+              
+              <TabsContent value="planning" className="mt-0">
+                <PlanningView />
               </TabsContent>
             </div>
           </Tabs>
