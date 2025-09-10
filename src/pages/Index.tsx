@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LayoutDashboard, Calendar, Grid3X3, BookOpen, BarChart3, GanttChart, LogOut, Users } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-dashboard.jpg";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KanbanView from "@/components/views/KanbanView";
@@ -14,6 +15,7 @@ import TimelineView from "@/components/views/TimelineView";
 import PlanningView from "@/components/views/PlanningView";
 const Index = () => {
   const [activeTab, setActiveTab] = useState("kanban");
+  const [projectsCount, setProjectsCount] = useState(0);
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -22,6 +24,23 @@ const Index = () => {
       navigate("/login");
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    const fetchProjectsCount = async () => {
+      if (!user) return;
+      
+      const { count } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      
+      setProjectsCount(count || 0);
+    };
+
+    if (user) {
+      fetchProjectsCount();
+    }
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -91,7 +110,7 @@ const Index = () => {
                 <div>Visualizações</div>
               </div>
               <div className="text-center">
-                <div className="font-semibold text-primary">∞</div>
+                <div className="font-semibold text-primary">{projectsCount}</div>
                 <div>Projetos</div>
               </div>
             </div>
