@@ -326,11 +326,18 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_recurring: boolean
           links: string[] | null
+          next_occurrence_date: string | null
           parent_id: string | null
           position: number
           priority: Database["public"]["Enums"]["priority"]
           project_id: string | null
+          recurrence_day_of_month: number | null
+          recurrence_days_of_week: number[] | null
+          recurrence_end_date: string | null
+          recurrence_interval: number | null
+          recurrence_type: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -342,11 +349,18 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_recurring?: boolean
           links?: string[] | null
+          next_occurrence_date?: string | null
           parent_id?: string | null
           position?: number
           priority?: Database["public"]["Enums"]["priority"]
           project_id?: string | null
+          recurrence_day_of_month?: number | null
+          recurrence_days_of_week?: number[] | null
+          recurrence_end_date?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -358,11 +372,18 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_recurring?: boolean
           links?: string[] | null
+          next_occurrence_date?: string | null
           parent_id?: string | null
           position?: number
           priority?: Database["public"]["Enums"]["priority"]
           project_id?: string | null
+          recurrence_day_of_month?: number | null
+          recurrence_days_of_week?: number[] | null
+          recurrence_end_date?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
