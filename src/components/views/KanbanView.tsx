@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useSelection } from "@/hooks/use-selection";
+import { useProjects } from "@/hooks/use-projects";
 import { TaskCreateModal } from "@/components/TaskCreateModal";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -34,9 +35,8 @@ const KanbanView = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { setSelection } = useSelection();
+  const { projects, selectedProject, setSelectedProject, getProjectById, refetch: refetchProjects } = useProjects();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<{ id: string; name: string; color: string; emoji?: string | null; }[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string>("");
   const [creationMode, setCreationMode] = useState<"task" | "project">("task");
   
   // Task states
@@ -55,34 +55,9 @@ const KanbanView = () => {
 
   useEffect(() => {
     if (user) {
-      fetchProjects();
       fetchTasks();
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (selectedProject) {
-      fetchTasks();
-    }
-  }, [selectedProject]);
-
-  const fetchProjects = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-      setProjects(data || []);
-      if (data && data.length > 0 && !selectedProject) {
-        setSelectedProject(data[0].id);
-        setSelection({ projectId: data[0].id });
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-    }
-  };
+  }, [user, selectedProject]);
 
   const fetchTasks = async () => {
     try {
@@ -212,6 +187,7 @@ const KanbanView = () => {
       setProjects(prev => [...prev, data]);
       setSelectedProject(data.id);
       setSelection({ projectId: data.id });
+      refetchProjects(); // Use the context refetch method
       setNewProjectName("");
       setNewProjectDescription("");
       setNewProjectColor("#3b82f6");
@@ -260,16 +236,8 @@ const KanbanView = () => {
       if (projectError) throw projectError;
 
       // Update local state
-      const updatedProjects = projects.filter(p => p.id !== projectId);
-      setProjects(updatedProjects);
+      refetchProjects(); // Use context refetch instead
       
-      // Select the first remaining project or clear selection
-      if (selectedProject === projectId) {
-        const newSelectedProject = updatedProjects.length > 0 ? updatedProjects[0].id : "";
-        setSelectedProject(newSelectedProject);
-        setSelection({ projectId: newSelectedProject });
-      }
-
       // Refresh tasks
       fetchTasks();
 
@@ -421,7 +389,8 @@ const KanbanView = () => {
     
     return null;
   };
-  return <div className="p-6">
+  return (
+    <div className="p-6">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -557,7 +526,21 @@ const KanbanView = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-h-[600px]">
-        {columns.map(column => <div key={column.id} onDrop={e => handleDrop(e, column.id)} onDragOver={handleDragOver} className="kanban-column bg-purple-50">
+        {columns.map(column => {
+          const currentProject = getProjectById(selectedProject);
+          return (
+            <div 
+              key={column.id} 
+              onDrop={e => handleDrop(e, column.id)} 
+              onDragOver={handleDragOver} 
+              className="kanban-column"
+              style={{
+                backgroundColor: currentProject?.color ? `${currentProject.color}0f` : 'rgb(243 244 246)',
+                borderColor: currentProject?.color || 'rgb(229 231 235)',
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
+            >
             <div className="flex items-center justify-between mb-4 bg-slate-50">
               <h3 className="font-semibold text-foreground">{column.title}</h3>
               <Badge variant="outline" className={`status-badge-${column.color}`}>
@@ -748,8 +731,10 @@ const KanbanView = () => {
                 Selecione um projeto para visualizar tarefas
               </div>
             )}
-          </div>)}
+          </div>
+        ))}
       </div>
-    </div>;
+    </div>
+  );
 };
 export default KanbanView;

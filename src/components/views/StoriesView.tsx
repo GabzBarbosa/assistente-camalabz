@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useSelection } from "@/hooks/use-selection";
+import { useProjects } from "@/hooks/use-projects";
 
 interface Story {
   id: string;
@@ -27,7 +28,7 @@ const StoriesView = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { setSelection } = useSelection();
-  const [selectedProject, setSelectedProject] = useState<string>("");
+  const { projects, selectedProject, setSelectedProject, getProjectById } = useProjects();
   const [newStory, setNewStory] = useState({
     title: "",
     description: "",
@@ -38,24 +39,14 @@ const StoriesView = () => {
     persona: "",
     tags: ""
   });
-  const [isCreating, setIsCreating] = useState(false);
   const [stories, setStories] = useState<Story[]>([]);
-  const [projects, setProjects] = useState<{ id: string; name: string; }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      fetchProjects();
       fetchStories();
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (selectedProject) {
-      fetchStories();
-      setSelection({ projectId: selectedProject });
-    }
-  }, [selectedProject]);
+  }, [user, selectedProject]);
 
   const fetchProjects = async () => {
     try {
