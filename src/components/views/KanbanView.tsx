@@ -184,7 +184,6 @@ const KanbanView = () => {
 
       if (error) throw error;
 
-      setProjects(prev => [...prev, data]);
       setSelectedProject(data.id);
       setSelection({ projectId: data.id });
       refetchProjects(); // Use the context refetch method
@@ -549,180 +548,202 @@ const KanbanView = () => {
             </div>
 
             <div className="space-y-3 mb-4">
-              {tasks.filter(task => task.status === column.id).map(task => <div key={task.id}>
-                    {editingTask?.id === task.id ?
-            // Editing mode
-            <div className="kanban-card border-primary">
-                        <div className="space-y-3">
-                          <Input value={editingTask.title} onChange={e => setEditingTask({
-                  ...editingTask,
-                  title: e.target.value
-                })} className="text-sm" placeholder="Título da tarefa" />
+              {tasks.filter(task => task.status === column.id).map(task => (
+                <div key={task.id}>
+                  {editingTask?.id === task.id ? (
+                    // Editing mode
+                    <div className="kanban-card border-primary">
+                      <div className="space-y-3">
+                        <Input 
+                          value={editingTask.title} 
+                          onChange={e => setEditingTask({ ...editingTask, title: e.target.value })} 
+                          className="text-sm" 
+                          placeholder="Título da tarefa" 
+                        />
+                        
+                        <Textarea 
+                          value={editingTask.description} 
+                          onChange={e => setEditingTask({ ...editingTask, description: e.target.value })} 
+                          className="text-xs" 
+                          placeholder="Descrição da tarefa" 
+                          rows={2} 
+                        />
+                        
+                        <div className="flex items-center gap-2">
+                          <select 
+                            value={editingTask.priority} 
+                            onChange={e => setEditingTask({ ...editingTask, priority: e.target.value as Task["priority"] })} 
+                            className="px-2 py-1 text-xs border border-border rounded bg-background"
+                          >
+                            <option value="low">Baixa</option>
+                            <option value="medium">Média</option>
+                            <option value="high">Alta</option>
+                          </select>
                           
-                          <Textarea value={editingTask.description} onChange={e => setEditingTask({
-                  ...editingTask,
-                  description: e.target.value
-                })} className="text-xs" placeholder="Descrição da tarefa" rows={2} />
-                          
-                          <div className="flex items-center gap-2">
-                            <select value={editingTask.priority} onChange={e => setEditingTask({
-                    ...editingTask,
-                    priority: e.target.value as Task["priority"]
-                  })} className="px-2 py-1 text-xs border border-border rounded bg-background">
-                              <option value="low">Baixa</option>
-                              <option value="medium">Média</option>
-                              <option value="high">Alta</option>
-                            </select>
-                            
-                            <Input type="date" value={editingTask.due_date || ""} onChange={e => setEditingTask({
-                    ...editingTask,
-                    due_date: e.target.value
-                  })} className="text-xs flex-1" />
-                          </div>
-                          
-                          <Input value={editingTask.assignee || ""} onChange={e => setEditingTask({
-                  ...editingTask,
-                  assignee: e.target.value
-                })} className="text-xs" placeholder="Responsável" />
-                          
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" onClick={handleSaveEdit} className="flex-1">
-                              <Check className="h-3 w-3 mr-1" />
-                              Salvar
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-                              <X className="h-3 w-3 mr-1" />
-                              Cancelar
-                            </Button>
-                          </div>
-                        </div>
-                      </div> :
-            // View mode
-            <div className="kanban-card group" draggable onDragStart={e => handleDragStart(e, task.id)}>
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-sm text-foreground line-clamp-2 flex-1">
-                            {task.title}
-                          </h4>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="sm" variant="ghost" onClick={() => handleEditTask(task)} className="h-6 w-6 p-0">
-                              <Edit2 className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)} className="h-6 w-6 p-0 text-destructive hover:text-destructive">
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          <Input 
+                            type="date" 
+                            value={editingTask.due_date || ""} 
+                            onChange={e => setEditingTask({ ...editingTask, due_date: e.target.value })} 
+                            className="text-xs flex-1" 
+                          />
                         </div>
                         
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                            {task.priority}
-                          </Badge>
-                          {(() => {
-                            const alert = getDueDateAlert(task.due_date);
-                            return alert ? (
-                              <Badge 
-                                variant="outline" 
-                                className={alert.type === 'overdue' ? 'alert-overdue' : 'alert-due-soon'}
-                              >
-                                {alert.text}
-                              </Badge>
-                            ) : null;
-                          })()}
+                        <Input 
+                          value={editingTask.assignee || ""} 
+                          onChange={e => setEditingTask({ ...editingTask, assignee: e.target.value })} 
+                          className="text-xs" 
+                          placeholder="Responsável" 
+                        />
+                        
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={handleSaveEdit} className="flex-1">
+                            <Check className="h-3 w-3 mr-1" />
+                            Salvar
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                            <X className="h-3 w-3 mr-1" />
+                            Cancelar
+                          </Button>
                         </div>
-                        
-                        {task.description && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                            {task.description}
-                          </p>}
-
-                        {task.assignee && <p className="text-xs text-muted-foreground">
-                          Responsável: {task.assignee}
-                        </p>}
-                        
-                        {task.due_date && <p className="text-xs text-muted-foreground">
-                          Vencimento: {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
-                        </p>}
-
-                        {/* Links */}
-                        {task.links && task.links.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {task.links.slice(0, 2).map((link, index) => (
-                              <a
-                                key={index}
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded truncate max-w-[120px]"
-                              >
-                                <LinkIcon className="h-3 w-3 flex-shrink-0" />
-                                <span className="truncate">Link</span>
-                              </a>
-                            ))}
-                            {task.links.length > 2 && (
-                              <span className="text-xs text-muted-foreground">
-                                +{task.links.length - 2} mais
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Subtarefas */}
+                      </div>
+                    </div>
+                  ) : (
+                    // View mode
+                    <div className="kanban-card group" draggable onDragStart={e => handleDragStart(e, task.id)}>
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-sm text-foreground line-clamp-2 flex-1">
+                          {task.title}
+                        </h4>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="sm" variant="ghost" onClick={() => handleEditTask(task)} className="h-6 w-6 p-0">
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)} className="h-6 w-6 p-0 text-destructive hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="outline" className={getPriorityColor(task.priority)}>
+                          {task.priority}
+                        </Badge>
                         {(() => {
-                          const subtasks = tasks?.filter(t => t.parent_id === task.id) || [];
-                          if (subtasks.length > 0) {
-                            const completedSubtasks = subtasks.filter(st => st.status === 'done').length;
-                            return (
-                              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                <ChevronRight className="h-3 w-3" />
-                                <span>{completedSubtasks}/{subtasks.length} subtarefas</span>
-                                <div className="flex-1 bg-muted rounded-full h-1.5">
-                                  <div 
-                                    className="bg-primary h-1.5 rounded-full transition-all" 
-                                    style={{ width: `${(completedSubtasks / subtasks.length) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
+                          const alert = getDueDateAlert(task.due_date);
+                          return alert ? (
+                            <Badge 
+                              variant="outline" 
+                              className={alert.type === 'overdue' ? 'alert-overdue' : 'alert-due-soon'}
+                            >
+                              {alert.text}
+                            </Badge>
+                          ) : null;
                         })()}
+                      </div>
+                      
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                          {task.description}
+                        </p>
+                      )}
 
-                        {/* Indicador de subtarefa */}
-                        {task.parent_id && (
-                          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                            <ChevronRight className="h-3 w-3 rotate-90" />
-                            <span>Subtarefa</span>
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            {task.due_date && <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{new Date(task.due_date).toLocaleDateString()}</span>
-                              </div>}
-                          </div>
-                          
-                          <div className="flex items-center gap-1">
-                            <TaskCreateModal 
-                              parentTask={{ id: task.id, title: task.title }} 
-                              projectId={selectedProject}
-                              onTaskCreated={refetch}
+                      {task.assignee && (
+                        <p className="text-xs text-muted-foreground">
+                          Responsável: {task.assignee}
+                        </p>
+                      )}
+                      
+                      {task.due_date && (
+                        <p className="text-xs text-muted-foreground">
+                          Vencimento: {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+
+                      {/* Links */}
+                      {task.links && task.links.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {task.links.slice(0, 2).map((link, index) => (
+                            <a
+                              key={index}
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded truncate max-w-[120px]"
                             >
-                              <Button variant="ghost" size="sm" title="Criar subtarefa">
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </TaskCreateModal>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditTask(task)}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </div>
+                              <LinkIcon className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">Link</span>
+                            </a>
+                          ))}
+                          {task.links.length > 2 && (
+                            <span className="text-xs text-muted-foreground">
+                              +{task.links.length - 2} mais
+                            </span>
+                          )}
                         </div>
-                      </div>}
-                  </div>)}
+                      )}
+
+                      {/* Subtarefas */}
+                      {(() => {
+                        const subtasks = tasks?.filter(t => t.parent_id === task.id) || [];
+                        if (subtasks.length > 0) {
+                          const completedSubtasks = subtasks.filter(st => st.status === 'done').length;
+                          return (
+                            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                              <ChevronRight className="h-3 w-3" />
+                              <span>{completedSubtasks}/{subtasks.length} subtarefas</span>
+                              <div className="flex-1 bg-muted rounded-full h-1.5">
+                                <div 
+                                  className="bg-primary h-1.5 rounded-full transition-all" 
+                                  style={{ width: `${(completedSubtasks / subtasks.length) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {/* Indicador de subtarefa */}
+                      {task.parent_id && (
+                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                          <ChevronRight className="h-3 w-3 rotate-90" />
+                          <span>Subtarefa</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {task.due_date && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{new Date(task.due_date).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <TaskCreateModal 
+                            parentTask={{ id: task.id, title: task.title }} 
+                            projectId={selectedProject}
+                            onTaskCreated={refetch}
+                          >
+                            <Button variant="ghost" size="sm" title="Criar subtarefa">
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </TaskCreateModal>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditTask(task)}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* Show message when no project selected */}
@@ -732,7 +753,8 @@ const KanbanView = () => {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

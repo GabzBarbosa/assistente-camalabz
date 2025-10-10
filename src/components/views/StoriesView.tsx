@@ -41,6 +41,7 @@ const StoriesView = () => {
   });
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -56,7 +57,7 @@ const StoriesView = () => {
         .eq('user_id', user?.id);
 
       if (error) throw error;
-      setProjects(data || []);
+      
       if (data && data.length > 0) {
         setSelectedProject(data[0].id);
       } else {

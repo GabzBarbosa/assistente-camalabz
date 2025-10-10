@@ -40,8 +40,9 @@ const TimelineView = () => {
           .eq('user_id', user?.id),
         supabase
           .from('tasks')
-          .select('id,title,created_at,due_date')
-          .eq('user_id', user?.id),
+          .select('id,title,created_at,due_date,status')
+          .eq('user_id', user?.id)
+          .not('due_date', 'is', null),
       ]);
 
       if (timelineRes.error) throw timelineRes.error;
@@ -49,16 +50,20 @@ const TimelineView = () => {
 
       const timelineData = (timelineRes.data || []) as TimelineTask[];
 
-      const taskCreationItems: TimelineTask[] = (tasksRes.data || []).map((t: any) => ({
-        id: `task:${t.id}`,
-        title: `Criação: ${t.title}`,
-        start_date: t.created_at,
-        end_date: t.due_date || t.created_at,
-        progress: 0,
-        milestone: true,
-      }));
+      // Mapear tarefas com datas para o cronograma
+      const taskItems: TimelineTask[] = (tasksRes.data || []).map((t: any) => {
+        const progress = t.status === 'done' ? 100 : t.status === 'in_progress' ? 50 : 0;
+        return {
+          id: `task:${t.id}`,
+          title: t.title,
+          start_date: t.created_at,
+          end_date: t.due_date,
+          progress,
+          milestone: false,
+        };
+      });
 
-      setTasks([...taskCreationItems, ...timelineData]);
+      setTasks([...taskItems, ...timelineData]);
     } catch (error) {
       console.error('Error fetching timeline items:', error);
       toast({
@@ -90,16 +95,17 @@ const TimelineView = () => {
 
   // Calcular posição da tarefa na timeline
   const getTaskPosition = (task: TimelineTask) => {
-    const startDate = new Date("2024-12-23");
+    const timelineStart = timelineDates[0];
+    const timelineEnd = timelineDates[timelineDates.length - 1];
     const taskStart = new Date(task.start_date);
     const taskEnd = task.end_date ? new Date(task.end_date) : new Date(task.start_date);
     
     const totalDays = timelineDates.length;
-    const taskStartDay = Math.floor((taskStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const taskStartDay = Math.floor((taskStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
     const taskDuration = Math.floor((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     
-    const leftPercent = (taskStartDay / totalDays) * 100;
-    const widthPercent = (taskDuration / totalDays) * 100;
+    const leftPercent = Math.max(0, (taskStartDay / totalDays) * 100);
+    const widthPercent = Math.min(100 - leftPercent, (taskDuration / totalDays) * 100);
     
     return { left: `${leftPercent}%`, width: `${widthPercent}%` };
   };
