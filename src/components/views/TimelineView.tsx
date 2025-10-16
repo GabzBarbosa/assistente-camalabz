@@ -76,18 +76,38 @@ const TimelineView = () => {
     }
   };
 
-  // Gerar datas para o cabeçalho da timeline (dinâmico: mês atual +/- 30 dias)
+  // Gerar datas para o cabeçalho da timeline baseado na visualização
   const generateTimelineDates = () => {
     const today = new Date();
-    const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // até fim do próximo mês
     const dates: Date[] = [];
 
-    const current = new Date(startDate);
-    while (current <= endDate) {
-      dates.push(new Date(current));
-      current.setDate(current.getDate() + 1);
+    if (selectedView === "month") {
+      // Mês atual: mostrar todos os dias
+      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      
+      const current = new Date(startDate);
+      while (current <= endDate) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+    } else if (selectedView === "quarter") {
+      // Trimestre: mostrar semanas (13 semanas)
+      const currentQuarter = Math.floor(today.getMonth() / 3);
+      const startDate = new Date(today.getFullYear(), currentQuarter * 3, 1);
+      
+      for (let week = 0; week < 13; week++) {
+        const weekDate = new Date(startDate);
+        weekDate.setDate(startDate.getDate() + (week * 7));
+        dates.push(weekDate);
+      }
+    } else if (selectedView === "year") {
+      // Ano: mostrar meses (12 meses)
+      for (let month = 0; month < 12; month++) {
+        dates.push(new Date(today.getFullYear(), month, 1));
+      }
     }
+
     return dates;
   };
 
@@ -100,12 +120,24 @@ const TimelineView = () => {
     const taskStart = new Date(task.start_date);
     const taskEnd = task.end_date ? new Date(task.end_date) : new Date(task.start_date);
     
-    const totalDays = timelineDates.length;
-    const taskStartDay = Math.floor((taskStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-    const taskDuration = Math.floor((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    let totalTimeMs: number;
     
-    const leftPercent = Math.max(0, (taskStartDay / totalDays) * 100);
-    const widthPercent = Math.min(100 - leftPercent, (taskDuration / totalDays) * 100);
+    if (selectedView === "month") {
+      // Calcular em dias
+      totalTimeMs = timelineEnd.getTime() - timelineStart.getTime();
+    } else if (selectedView === "quarter") {
+      // Calcular em semanas (13 semanas)
+      totalTimeMs = 13 * 7 * 24 * 60 * 60 * 1000;
+    } else {
+      // Calcular em meses (12 meses)
+      totalTimeMs = 365 * 24 * 60 * 60 * 1000;
+    }
+    
+    const taskStartOffset = taskStart.getTime() - timelineStart.getTime();
+    const taskDuration = taskEnd.getTime() - taskStart.getTime();
+    
+    const leftPercent = Math.max(0, Math.min(100, (taskStartOffset / totalTimeMs) * 100));
+    const widthPercent = Math.max(1, Math.min(100 - leftPercent, (taskDuration / totalTimeMs) * 100));
     
     return { left: `${leftPercent}%`, width: `${widthPercent}%` };
   };
@@ -199,22 +231,44 @@ const TimelineView = () => {
                 <div className="w-48 flex-shrink-0"></div>
                 <div className="flex-1 relative">
                   <div className="flex">
-                    {timelineDates.map((date, index) => (
-                      <div
-                        key={index}
-                        className={`
-                          flex-1 min-w-8 text-center text-xs py-2 border-r border-border
-                          ${isWeekend(date) ? 'bg-muted/30' : 'bg-background'}
-                        `}
-                      >
-                        <div className="font-medium">
-                          {date.getDate()}
+                    {timelineDates.map((date, index) => {
+                      let label1, label2;
+                      
+                      if (selectedView === "month") {
+                        label1 = date.getDate().toString();
+                        label2 = date.toLocaleDateString('pt-BR', { weekday: 'short' });
+                      } else if (selectedView === "quarter") {
+                        label1 = `S${index + 1}`;
+                        label2 = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                      } else {
+                        label1 = date.toLocaleDateString('pt-BR', { month: 'short' });
+                        label2 = '';
+                      }
+                      
+                      return (
+                        <div
+                          key={index}
+                          className={`
+                            flex-1 text-center text-xs py-2 border-r border-border
+                            ${selectedView === "month" 
+                              ? `min-w-8 ${isWeekend(date) ? 'bg-muted/30' : 'bg-background'}` 
+                              : selectedView === "quarter" 
+                              ? 'min-w-16 bg-background'
+                              : 'min-w-20 bg-background'
+                            }
+                          `}
+                        >
+                          <div className="font-medium">
+                            {label1}
+                          </div>
+                          {label2 && (
+                            <div className="text-muted-foreground">
+                              {label2}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-muted-foreground">
-                          {date.toLocaleDateString('pt-BR', { weekday: 'short' })}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
