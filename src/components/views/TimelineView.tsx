@@ -16,6 +16,12 @@ interface TimelineTask {
   end_date?: string;
   progress?: number;
   milestone: boolean;
+  project_id?: string;
+  project?: {
+    id: string;
+    name: string;
+    emoji?: string;
+  };
 }
 
 const TimelineView = () => {
@@ -24,6 +30,7 @@ const TimelineView = () => {
   const [selectedView, setSelectedView] = useState<"month" | "quarter" | "year">("month");
   const [tasks, setTasks] = useState<TimelineTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -33,25 +40,36 @@ const TimelineView = () => {
 
   const fetchTimelineItems = async () => {
     try {
-      const [timelineRes, tasksRes] = await Promise.all([
+      const [timelineRes, tasksRes, projectsRes] = await Promise.all([
         supabase
           .from('timeline_items')
-          .select('*')
+          .select('*, project:projects(id, name, emoji)')
           .eq('user_id', user?.id),
         supabase
           .from('tasks')
-          .select('id,title,created_at,due_date,status')
+          .select('id,title,created_at,due_date,status,project_id,project:projects(id,name,emoji)')
           .eq('user_id', user?.id)
           .not('due_date', 'is', null),
+        supabase
+          .from('projects')
+          .select('*')
+          .eq('user_id', user?.id),
       ]);
 
       if (timelineRes.error) throw timelineRes.error;
       if (tasksRes.error) throw tasksRes.error;
+      if (projectsRes.error) throw projectsRes.error;
 
-      const timelineData = (timelineRes.data || []) as TimelineTask[];
+      setProjects(projectsRes.data || []);
+
+      const timelineData = (timelineRes.data || []).map((item: any) => ({
+        ...item,
+        project_id: item.project_id,
+        project: item.project,
+      })) as (TimelineTask & { project_id?: string; project?: any })[];
 
       // Mapear tarefas com datas para o cronograma
-      const taskItems: TimelineTask[] = (tasksRes.data || []).map((t: any) => {
+      const taskItems: (TimelineTask & { project_id?: string; project?: any })[] = (tasksRes.data || []).map((t: any) => {
         const progress = t.status === 'done' ? 100 : t.status === 'in_progress' ? 50 : 0;
         return {
           id: `task:${t.id}`,
@@ -60,6 +78,8 @@ const TimelineView = () => {
           end_date: t.due_date,
           progress,
           milestone: false,
+          project_id: t.project_id,
+          project: t.project,
         };
       });
 
@@ -405,17 +425,45 @@ const TimelineView = () => {
               </div>
               
               <div className="pt-4 border-t">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <span>Progresso geral</span>
                   <span className="font-semibold">
-                    {Math.round(tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / tasks.length)}%
+                    {tasks.length > 0 ? Math.round(tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / tasks.length) : 0}%
                   </span>
                 </div>
                 <Progress 
-                  value={tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / tasks.length} 
+                  value={tasks.length > 0 ? tasks.reduce((acc, task) => acc + (task.progress || 0), 0) / tasks.length : 0} 
                   className="mt-2"
                 />
               </div>
+
+              {projects.length > 0 && (
+                <div className="pt-4 border-t">
+                  <h4 className="text-sm font-medium mb-3">Conclusão por Projeto</h4>
+                  <div className="space-y-3">
+                    {projects.map((project) => {
+                      const projectTasks = tasks.filter(t => t.project_id === project.id);
+                      const progress = projectTasks.length > 0
+                        ? Math.round(projectTasks.reduce((acc, task) => acc + (task.progress || 0), 0) / projectTasks.length)
+                        : 0;
+                      
+                      return (
+                        <div key={project.id}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm truncate flex-1">
+                              {project.emoji || '📂'} {project.name}
+                            </span>
+                            <span className="text-sm font-medium ml-2">
+                              {progress}%
+                            </span>
+                          </div>
+                          <Progress value={progress} className="h-1.5" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
