@@ -30,6 +30,7 @@ interface Task {
   user_id: string;
   created_at: string;
   updated_at: string;
+  completed_at?: string | null;
 }
 const KanbanView = () => {
   const { toast } = useToast();
@@ -266,21 +267,33 @@ const KanbanView = () => {
     const taskId = e.dataTransfer.getData("taskId");
     
     try {
+      // Set completed_at when moving to done, clear it when moving away from done
+      const updateData: any = { 
+        status: newStatus as Task["status"]
+      };
+      
+      if (newStatus === 'done') {
+        updateData.completed_at = new Date().toISOString();
+      } else {
+        updateData.completed_at = null;
+      }
+
       const { error } = await supabase
         .from('tasks')
-        .update({ status: newStatus as Task["status"] })
+        .update(updateData)
         .eq('id', taskId);
 
       if (error) throw error;
 
       setTasks(tasks.map(task => task.id === taskId ? {
         ...task,
-        status: newStatus as Task["status"]
+        status: newStatus as Task["status"],
+        completed_at: updateData.completed_at
       } : task));
       
       toast({
         title: "Tarefa movida",
-        description: "Status atualizado com sucesso!"
+        description: newStatus === 'done' ? "Tarefa concluída!" : "Status atualizado com sucesso!"
       });
     } catch (error) {
       console.error('Error updating task:', error);
