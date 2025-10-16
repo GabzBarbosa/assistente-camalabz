@@ -67,7 +67,7 @@ const KanbanView = () => {
         .select('*')
         .eq('user_id', user?.id);
 
-      if (selectedProject) {
+      if (selectedProject && selectedProject !== 'all') {
         query = query.eq('project_id', selectedProject);
       }
 
@@ -107,10 +107,10 @@ const KanbanView = () => {
     color: "done"
   }];
   const handleAddTask = async (columnId: string) => {
-    if (!selectedProject) {
+    if (!selectedProject || selectedProject === 'all') {
       toast({
         title: "Projeto não selecionado",
-        description: "Selecione um projeto para criar tarefas.",
+        description: "Selecione um projeto específico para criar tarefas.",
         variant: "destructive",
       });
       return;
@@ -256,8 +256,9 @@ const KanbanView = () => {
   };
 
   const handleProjectSelect = (projectId: string) => {
-    setSelectedProject(projectId);
-    setSelection({ projectId });
+    const newProjectId = projectId === 'all' ? null : projectId;
+    setSelectedProject(newProjectId);
+    setSelection({ projectId: newProjectId });
   };
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("taskId", taskId);
@@ -416,11 +417,14 @@ const KanbanView = () => {
             {/* Project Selector */}
             {projects.length > 0 ? (
               <div className="flex items-center gap-2">
-                <Select value={selectedProject} onValueChange={handleProjectSelect}>
+                <Select value={selectedProject || 'all'} onValueChange={handleProjectSelect}>
                   <SelectTrigger className="min-w-48">
                     <SelectValue placeholder="📁 Selecione um projeto" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">
+                      📚 Todos os projetos
+                    </SelectItem>
                     {projects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
                         {project.emoji || "📂"} {project.name}
@@ -428,7 +432,7 @@ const KanbanView = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedProject && (
+                {selectedProject && selectedProject !== 'all' && (
                   <Button
                     size="sm"
                     variant="outline"
